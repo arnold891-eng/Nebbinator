@@ -1,0 +1,10 @@
+## Interface: 20505
+## Title: Nebbinator
+## Notes: Build and advertise guild recruitment messages with class/spec needs and raid times
+## Author: Arn
+## Version: 1.0.0
+## SavedVariables: NubbinatorDB
+
+Core\Init.lua
+UI\MainWindow.lua
+UI\RespondersWindow.lua
