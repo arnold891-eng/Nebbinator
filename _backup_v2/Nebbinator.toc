@@ -1,0 +1,17 @@
+## Interface: 20505
+## Title: Nebbinator
+## Notes: Guild recruitment: build the ad, post it, and handle everyone who whispers back.
+## Author: Arn
+## Version: 2.0.1
+## SavedVariables: NebbinatorDB, NubbinatorDB
+## DefaultState: enabled
+## OptionalDeps: BiSTheme
+
+Core\Util.lua
+Core\Init.lua
+Core\Message.lua
+Core\Responders.lua
+UI\Widgets.lua
+UI\MainWindow.lua
+UI\RespondersWindow.lua
+UI\Minimap.lua
