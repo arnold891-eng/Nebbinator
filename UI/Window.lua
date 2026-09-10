@@ -17,16 +17,23 @@ local K = NS.Kit
 local UI = {}
 NS.UI = UI
 
-UI.W, UI.H   = 820, 660
+-- The desk is the window. The book (the tab rail and its pages) rolls up out of
+-- sight until you ask for it, and the frame is only ever as tall as what is on
+-- show: header + desk + (book).
+UI.DESK_W    = 620          -- rolled up: just the queue
+UI.BOOK_W    = 820          -- unrolled: room for the rail and the pages
+UI.BOOK_H    = 500
+UI.W         = 820          -- pages are laid out for the wide state, always
+UI.H         = 660
 UI.HEADER    = 16   -- K.HEADER, the house bar
 UI.SIDEBAR   = 168
-UI.STRIP     = 15   -- header buttons: x(12) at -3 -> its left edge is 15 from the right
+UI.STRIP     = 29   -- header buttons: x(12) at -3, list(12) at -17 -> strip owns -3..-29
 UI.ROW       = 30
 UI.controls  = {}
 UI.actions   = {}
 UI.pages     = {}
 UI.tabs      = {}
-UI.PAGES     = { "Responders", "Recruit", "Message", "Replies", "Settings", "About" }
+UI.PAGES     = { "Recruit", "Message", "Replies", "Settings", "About" }
 
 function UI.colW(page)
     return (page and page.colW) or (UI.W - UI.SIDEBAR - 56)
@@ -304,7 +311,7 @@ function UI:Refresh()
         if c.sync then pcall(c.sync) end
     end
     self:RefreshChrome()
-    if self.RefreshResponders then self:RefreshResponders() end
+    if self.RefreshDesk then self:RefreshDesk() end
     if self.RefreshPreview then self:RefreshPreview() end
     if self.RefreshQuick then self:RefreshQuick() end
     if self.RefreshMessageHints then self:RefreshMessageHints() end
@@ -313,19 +320,17 @@ end
 
 -- Data changed underneath us (a whisper landed, a /who came back). Cheap
 -- enough to call from an event; does nothing until the window exists.
+-- A whisper landed, or a /who came back. The list may have grown or shrunk, so
+-- this goes through the layout rather than just repainting.
 function UI:OnDataChanged()
     if not self.frame then return end
-    if self.RefreshResponders then self:RefreshResponders() end
+    self:LayoutDesk()
     self:RefreshChrome()
 end
 
 function UI:RefreshChrome()
     if not self.frame then return end
     self:PaintSlots()
-    local new = NS.Responders:CountNew()
-    if self.tabs.Responders then
-        self.tabs.Responders.label:SetText(new > 0 and ("Responders  " .. NS.T.text("accent", new)) or "Responders")
-    end
 end
 
 --------------------------------------------------------------------
@@ -360,13 +365,60 @@ function UI:Build()
     end
 
     self:BuildHeader(f)
-    self:BuildRail(f)
+    self:BuildDesk(f)
+    self:BuildBook(f)
 
     if UISpecialFrames then table.insert(UISpecialFrames, "NebbinatorFrame") end
 
+    self.bookOpen = NS.db.bookOpen and true or false
     self:ShowTab(NS.db.uiTab or self.PAGES[1])
+    self:LayoutDesk()
     f:Hide()
     return f
+end
+
+--------------------------------------------------------------------
+-- rolling the book up and down
+--------------------------------------------------------------------
+
+function UI:ToggleBook(open)
+    if open == nil then open = not self.bookOpen end
+    self.bookOpen = open and true or false
+    NS.db.bookOpen = self.bookOpen
+    self:Relayout()
+end
+
+-- One place decides how big the window is: header + desk + whatever the book
+-- is worth right now. Called on every change that can alter either.
+function UI:Relayout()
+    if not self.frame then return end
+
+    local deskH = (self.desk and self.desk:GetHeight()) or 1
+    local width = self.bookOpen and self.BOOK_W or self.DESK_W
+    local height = self.HEADER + deskH + (self.bookOpen and self.BOOK_H or 0)
+
+    if self.book then
+        if self.bookOpen then
+            self.book:ClearAllPoints()
+            self.book:SetPoint("TOPLEFT", self.frame, "TOPLEFT", 0, -(self.HEADER + deskH))
+            self.book:SetPoint("TOPRIGHT", self.frame, "TOPRIGHT", 0, -(self.HEADER + deskH))
+            self.book:SetHeight(self.BOOK_H)
+            self.book:Show()
+        else
+            self.book:Hide()
+        end
+    end
+
+    if self.bookBtn then self.bookBtn:SetMarked(self.bookOpen) end
+
+    -- grow downward from wherever the window was put, never off the screen
+    local top, left = self.frame:GetTop(), self.frame:GetLeft()
+    self.frame:SetWidth(width)
+    self.frame:SetHeight(height)
+    if top and left then
+        self.frame:ClearAllPoints()
+        self.frame:SetPoint("TOPLEFT", UIParent, "BOTTOMLEFT", left, top - height)
+    end
 end
 
 function UI:BuildHeader(f)
@@ -381,19 +433,25 @@ function UI:BuildHeader(f)
 
     -- The title IS the prompt: "BiS> Nebbinator_", cycling the state slots.
     --
-    -- Header budget, left to right: 4 + prompt, width W - STRIP - 8 = 797 px
-    -- ("BiS> " plus ~160 characters at 8 pt, so the words never reach the box).
-    -- From the right: x(12) at -3, so the strip owns -3..-15. Nothing else goes
-    -- in this bar. No logo -- "BiS>" is the brand. No version -- that is on the
-    -- About tab. No preview pill and no new-responder badge -- both were state,
-    -- and state belongs in the prompt's slots.
+    -- Header budget, left to right: 4 + prompt, width DESK_W - STRIP - 8 = 583 px
+    -- ("BiS> " plus ~120 characters at 8 pt, so the words never reach the boxes)
+    -- and the window is only ever wider than that. From the right: x(12) at -3,
+    -- =(12) at -17, so the strip owns -3..-29. Nothing else goes in this bar.
+    -- No logo -- "BiS>" is the brand. No version -- that is on the About page.
+    -- No preview pill and no new-responder badge -- both were state, and state
+    -- belongs in the prompt's slots.
     self.title = K.fs(head, "", K.LABEL, "ink")
     self.title:SetPoint("LEFT", head, "LEFT", 4, 0)
-    self.con = BiSTheme.Console(self.title, { width = self.W - self.STRIP - 8 })
+    -- budget against the NARROW state; the wide one only ever has more room
+    self.con = BiSTheme.Console(self.title, { width = self.DESK_W - self.STRIP - 8 })
     self.con:Set("name", "Nebbinator", "accent")
 
     self.closeBtn = K.HeaderButton(head, -3, "x", "Close",
         "/nb brings it back.", function() UI:Hide() end, "warn")
+
+    self.bookBtn = K.HeaderButton(head, -17, "=", "The rest of it",
+        "Needs, raid times, templates, replies, settings. Rolls back up when you are done.",
+        function() UI:ToggleBook() end)
 
     -- the header is the drag handle
     head:EnableMouse(true)
@@ -443,18 +501,28 @@ function UI:Clear()
     if self.con then self.con:Clear() end
 end
 
-function UI:BuildRail(f)
-    local rail = CreateFrame("Frame", nil, f)
-    rail:SetPoint("TOPLEFT", f, "TOPLEFT", 0, -self.HEADER)
-    rail:SetPoint("BOTTOMLEFT")
+function UI:BuildBook(f)
+    local book = CreateFrame("Frame", nil, f)
+    book:SetPoint("TOPLEFT", f, "TOPLEFT", 0, -self.HEADER)
+    book:SetPoint("TOPRIGHT", f, "TOPRIGHT", 0, -self.HEADER)
+    book:SetHeight(self.BOOK_H)
+    book:Hide()
+    self.book = book
+
+    local top = K.hairline(book, "edge")
+    top:SetPoint("TOPLEFT"); top:SetPoint("TOPRIGHT")
+
+    local rail = CreateFrame("Frame", nil, book)
+    rail:SetPoint("TOPLEFT", book, "TOPLEFT", 0, -1)
+    rail:SetPoint("BOTTOMLEFT", book, "BOTTOMLEFT", 0, 0)
     rail:SetWidth(self.SIDEBAR)
     K.tex(rail, "BACKGROUND", "sidebar")
     local divider = K.hairline(rail, "edge", false)
     divider:SetPoint("TOPRIGHT"); divider:SetPoint("BOTTOMRIGHT")
 
-    local body = CreateFrame("Frame", nil, f)
+    local body = CreateFrame("Frame", nil, book)
     body:SetPoint("TOPLEFT", rail, "TOPRIGHT", 1, 0)
-    body:SetPoint("BOTTOMRIGHT", f, "BOTTOMRIGHT", -1, 1)
+    body:SetPoint("BOTTOMRIGHT", book, "BOTTOMRIGHT", -1, 1)
     K.tex(body, "BACKGROUND", "content")
     self.body = body
 
@@ -514,21 +582,17 @@ function UI:ShowTab(name)
             if on then self.pages[tabName]:Show() else self.pages[tabName]:Hide() end
         end
     end
-    self:RefillSendBars()
     self:Refresh()
 end
 
--- Channels come and go (/join, /leave, a zone change renaming LocalDefense),
--- so the bars are rebuilt on every tab switch rather than once at load.
-function UI:RefillSendBars()
-    if self.LayoutResponders and self.respondersSend then self:LayoutResponders() end
-    if self.recruitSend then self:FillSendBar(self.recruitSend) end
-end
-
+-- `tab` names a page in the book, so asking for one unrolls it.
 function UI:Open(tab)
     self:Build()
-    if tab then self:ShowTab(tab) end
-    self:Refresh()
+    if tab then
+        self:ShowTab(tab)
+        self:ToggleBook(true)
+    end
+    self:LayoutDesk()
     self.frame:Show()
 end
 
@@ -539,7 +603,12 @@ end
 function UI:Toggle(tab)
     self:Build()
     if self.frame:IsShown() then
-        if tab and self.shown ~= tab then self:ShowTab(tab) else self:Hide() end
+        if tab and not (self.bookOpen and self.shown == tab) then
+            self:ShowTab(tab)
+            self:ToggleBook(true)
+        else
+            self:Hide()
+        end
     else
         self:Open(tab)
     end

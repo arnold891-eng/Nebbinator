@@ -1,5 +1,29 @@
 # Nebbinator
 
+## 3.2.0 - 10 Sep 2026
+
+The desk, and the book behind it.
+
+- **The window is the queue now.** Nebbinator opens as a 620 px desk: the
+  prompt header, one 16 px line per person waiting, the one you are serving
+  opened up underneath, and the send buttons along the foot. Nothing else.
+  It grows one row per whisper and shrinks one row per accept or decline, so
+  the window is exactly as tall as the work in it. Past ten waiting it stops
+  growing and the list scrolls instead.
+- **The rest rolls up.** Recruit / Message / Replies / Settings / About moved
+  behind a header button. Open it and the window widens to 820 and the tab
+  rail appears beside the desk; close it and it is a desk again. The state is
+  remembered (`bookOpen`), and `/nb book` toggles it from chat.
+- **An empty desk is the smallest desk.** No list area at all - the hint lives
+  on the count line. The first whisper used to *shrink* the window, which is
+  the opposite of the point.
+- **Send buttons pin.** Right-click one to take it off the desk; the `v` arrow
+  brings the hidden ones back. The elapsed clock moved to the button's right
+  edge and the label to its left, with the width reserving room for both -
+  on a long channel name the clock used to print straight through the label.
+- `UI\Pages\Responders.lua` is gone; `UI\Desk.lua` replaces it.
+- 367 checks, four of them mutation-verified.
+
 ## 3.1.0 - 9 Sep 2026
 
 The house style, and the shared channel.

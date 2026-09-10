@@ -50,7 +50,8 @@ function MB:Initialize()
 
     b:SetScript("OnClick", function(_, button)
         if button == "RightButton" then
-            NS.UI:Toggle("Responders")
+            NS.UI:Open()
+            NS.UI:ToggleBook()
         else
             NS.UI:Toggle()
         end
@@ -72,7 +73,7 @@ function MB:Initialize()
         GameTooltip:SetOwner(self, "ANCHOR_LEFT")
         GameTooltip:SetText("Nebbinator", NS.T.rgb("accent"))
         GameTooltip:AddLine("Left click: open the window", 0.9, 0.9, 0.9)
-        GameTooltip:AddLine("Right click: jump to Responders", 0.9, 0.9, 0.9)
+        GameTooltip:AddLine("Right click: roll out the rest", 0.9, 0.9, 0.9)
         local new = NS.Responders:CountNew()
         if new > 0 then
             GameTooltip:AddLine(new .. " new responder" .. (new > 1 and "s" or ""), NS.T.rgb("good"))

@@ -99,7 +99,10 @@ local function Defaults()
         responders = {},
         minimap    = { hide = false, angle = 205 },
         window     = {},
-        uiTab      = "Responders",
+        uiTab      = "Recruit",
+        bookOpen   = false,        -- the tab rail is rolled up until asked for
+        filter     = "all",
+        hiddenChannels = {},       -- send buttons right-clicked off the desk
     }
 end
 
@@ -299,9 +302,12 @@ local function HandleSlash(msg)
     if cmd == "" or cmd == "show" then
         NS.UI:Toggle()
     elseif cmd == "r" or cmd == "responders" then
-        NS.UI:Toggle("Responders")
+        NS.UI:Toggle()
     elseif cmd == "config" or cmd == "options" or cmd == "settings" then
         NS.UI:Open("Settings")
+    elseif cmd == "book" then
+        NS.UI:Open()
+        NS.UI:ToggleBook()
     elseif cmd == "preview" or cmd == "test" then
         NS.TogglePreview()
     elseif cmd == "reply" then
@@ -322,7 +328,7 @@ local function HandleSlash(msg)
     else
         NS.Util.Print("commands:")
         print("  " .. NS.T.text("accent", "/nb") .. " - open the window")
-        print("  " .. NS.T.text("accent", "/nb r") .. " - open it on Responders")
+        print("  " .. NS.T.text("accent", "/nb book") .. " - roll the rest of it out")
         print("  " .. NS.T.text("accent", "/nb config") .. " - open it on Settings")
         print("  " .. NS.T.text("accent", "/nb preview") .. " - toggle preview (test) mode")
         print("  " .. NS.T.text("accent", "/nb reply") .. " - toggle auto-reply")

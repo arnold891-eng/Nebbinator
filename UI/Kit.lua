@@ -199,6 +199,21 @@ function K.HeaderButton(parent, x, label, title, tip, onClick, tone)
     b.text:SetPoint("CENTER")
     b.text:SetJustifyH("CENTER")
 
+    -- lit when whatever it toggles is showing; the kit's other buttons all do
+    -- this and the book button silently could not
+    function b:Restore()
+        if self.marked then
+            self.fill:SetColorTexture(K.shade(self.tone, 0.22))
+            self.edge:set(self.tone, 1)
+            self.text:SetTextColor(K.shade(self.tone))
+        else
+            self.fill:SetColorTexture(K.shade("field", 1))
+            self.edge:set("edge", 1)
+            self.text:SetTextColor(K.shade("ink2"))
+        end
+    end
+    function b:SetMarked(on) self.marked = on and true or false; self:Restore() end
+
     b:SetScript("OnClick", function(s, button) if onClick then onClick(s, button) end end)
     b:SetScript("OnEnter", function(s)
         s.edge:set(s.tone, 1)
@@ -211,8 +226,7 @@ function K.HeaderButton(parent, x, label, title, tip, onClick, tone)
         end
     end)
     b:SetScript("OnLeave", function(s)
-        s.edge:set("edge", 1)
-        s.text:SetTextColor(K.shade("ink2"))
+        s:Restore()
         if GameTooltip then GameTooltip:Hide() end
     end)
     return b
