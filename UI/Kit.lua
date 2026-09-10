@@ -260,7 +260,13 @@ function K.Input(parent, w, h, opts)
 
     well.edit = e
     function well:Set(text)
-        if not self.edit:HasFocus() then self.edit:SetText(text or "") end
+        if not self.edit:HasFocus() then
+            self.edit:SetText(text or "")
+            -- Show the START of the value. SetText leaves the cursor at the end,
+            -- so a long URL came back as "cter/us/dreamscythe/[name]" - the tail
+            -- of it, scrolled, unrecognisable.
+            if self.edit.SetCursorPosition then self.edit:SetCursorPosition(0) end
+        end
     end
     function well:Get() return self.edit:GetText() end
     return well

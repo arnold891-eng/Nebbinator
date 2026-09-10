@@ -71,18 +71,18 @@ function UI:BuildDesk(f)
     self.send:SetPoint("TOPLEFT", 10, -18)
 
     -- filters ------------------------------------------------------
-    self.filterRow = CreateFrame("Frame", nil, desk)
-    self.filterRow:SetHeight(20)
+    -- Parented straight to the desk, not to a container frame. The container
+    -- had one anchor and no width, so it measured 0x20 and its buttons never
+    -- drew - the desk reserved the 22 px and showed a blank band. Everything
+    -- else on the desk is a direct child with real anchors, and everything else
+    -- on the desk rendered.
     self.filterButtons = {}
-    local x = 0
     for i, filter in ipairs(FILTERS) do
-        local b = K.Button(self.filterRow, filter.label, 58, 18, function()
+        local b = K.Button(desk, filter.label, 58, 18, function()
             UI.filter = filter.key
             NS.db.filter = filter.key
             UI:LayoutDesk()
         end)
-        b:SetPoint("TOPLEFT", x, 0)
-        x = x + 62
         self.filterButtons[i] = { button = b, key = filter.key }
     end
 
@@ -245,8 +245,12 @@ function UI:LayoutDesk()
     local sendRows = self:FillSendBar(self.send)
     local top = 18 + sendRows * self.SEND_ROW + 6
 
-    self.filterRow:ClearAllPoints()
-    self.filterRow:SetPoint("TOPLEFT", self.desk, "TOPLEFT", 10, -top)
+    local fx = 10
+    for _, entry in ipairs(self.filterButtons) do
+        entry.button:ClearAllPoints()
+        entry.button:SetPoint("TOPLEFT", self.desk, "TOPLEFT", fx, -top)
+        fx = fx + entry.button:GetWidth() + 4
+    end
     top = top + 22
 
     self.countText:ClearAllPoints()

@@ -214,16 +214,60 @@ end
 
 function NS.TogglePreview()
     NS.db.previewMode = not NS.db.previewMode
-    NS.Util.Print("Preview mode " .. (NS.db.previewMode
-        and NS.T.text("warn", "ON") .. " - nothing is really sent"
-        or NS.T.text("good", "OFF") .. " - messages go live"))
+    NS.Say("preview " .. (NS.db.previewMode and "on - nothing sends" or "off - live"),
+        NS.db.previewMode and "warn" or "good")
     NS.UI:Refresh()
 end
 
 function NS.ToggleAutoReply()
     NS.db.autoReply.enabled = not NS.db.autoReply.enabled
-    NS.Util.Print("Auto-reply " .. (NS.db.autoReply.enabled
-        and NS.T.text("good", "ON") or NS.T.text("warn", "OFF")))
+    NS.Say("auto-reply " .. (NS.db.autoReply.enabled and "on" or "off"),
+        NS.db.autoReply.enabled and "good" or "warn")
+    NS.UI:Refresh()
+end
+
+--- Everything below is owned by exactly one function, and both the options
+--- window and the slash command call it. Two paths that write the same key
+--- separately drift; two paths through one function cannot.
+function NS.SetCooldown(seconds)
+    seconds = tonumber(seconds) or 10
+    if seconds < 5 then seconds = 5 elseif seconds > 120 then seconds = 120 end
+    NS.db.sendCooldown = seconds
+    NS.UI:Refresh()
+end
+
+function NS.ToggleSound()
+    NS.db.autoReply.playSound = not NS.db.autoReply.playSound
+    NS.Say("alert sound " .. (NS.db.autoReply.playSound and "on" or "off"),
+        NS.db.autoReply.playSound and "good" or "warn")
+    NS.UI:Refresh()
+end
+
+function NS.ToggleSoundOnlyNew()
+    NS.db.autoReply.soundOnlyNew = not NS.db.autoReply.soundOnlyNew
+    NS.UI:Refresh()
+end
+
+function NS.ToggleLeadFinder()
+    NS.db.leadFinder = not NS.db.leadFinder
+    NS.Say("lead finder " .. (NS.db.leadFinder and "on" or "off"),
+        NS.db.leadFinder and "good" or "warn")
+    NS.UI:Refresh()
+end
+
+--- Pick a sound by its position in NS.SOUNDS, and play it so you hear what you
+--- picked. The options stepper walks the list with this.
+function NS.SetSoundIndex(index)
+    index = tonumber(index) or 2
+    if index < 1 then index = 1 elseif index > #NS.SOUNDS then index = #NS.SOUNDS end
+    local sound = NS.SOUNDS[index]
+    NS.db.autoReply.sound = sound.key
+    NS.Util.PlayAlert(sound.key)
+    NS.UI:Refresh()
+end
+
+function NS.SetChannels(text)
+    NS.db.customChannels = NS.Util.Trim(text or "")
     NS.UI:Refresh()
 end
 
@@ -235,6 +279,8 @@ end
 function NS.ToggleMinimap()
     NS.db.minimap.hide = not NS.db.minimap.hide
     NS.Minimap:Update()
+    NS.Say("minimap button " .. (NS.db.minimap.hide and "hidden" or "shown"),
+        NS.db.minimap.hide and "warn" or "good")
     NS.UI:Refresh()
 end
 
@@ -244,7 +290,8 @@ function NS.ResetWindow()
         NS.UI.frame:ClearAllPoints()
         NS.UI.frame:SetPoint("CENTER")
     end
-    NS.Util.Print("window put back in the middle.")
+    if NS.UI.opt then NS.UI.opt:Recenter() end
+    NS.Say("window put back", "ink2")
 end
 
 --------------------------------------------------------------------
@@ -304,14 +351,27 @@ local function HandleSlash(msg)
     elseif cmd == "r" or cmd == "responders" then
         NS.UI:Toggle()
     elseif cmd == "config" or cmd == "options" or cmd == "settings" then
-        NS.UI:Open("Settings")
+        NS.UI:ToggleOptions()
     elseif cmd == "book" then
         NS.UI:Open()
         NS.UI:ToggleBook()
     elseif cmd == "preview" or cmd == "test" then
         NS.TogglePreview()
+        NS.Util.Print("Preview mode " .. (NS.db.previewMode
+            and NS.T.text("warn", "ON") .. " - nothing is really sent"
+            or NS.T.text("good", "OFF") .. " - messages go live"))
     elseif cmd == "reply" then
         NS.ToggleAutoReply()
+        NS.Util.Print("Auto-reply " .. (NS.db.autoReply.enabled
+            and NS.T.text("good", "ON") or NS.T.text("warn", "OFF")))
+    elseif cmd == "channels" then
+        if rest ~= "" then
+            NS.SetChannels(rest)
+            NS.Util.Print("Extra channels: " .. NS.db.customChannels)
+        else
+            NS.Util.Print("Extra channels: " .. (NS.db.customChannels ~= "" and NS.db.customChannels
+                or NS.T.text("warn", "none")))
+        end
     elseif cmd == "discord" then
         if rest ~= "" then
             NS.SetDiscord(rest)
@@ -325,14 +385,16 @@ local function HandleSlash(msg)
         NS.Util.Print("Minimap button " .. (NS.db.minimap.hide and "hidden" or "shown"))
     elseif cmd == "reset" then
         NS.ResetWindow()
+        NS.Util.Print("window put back in the middle.")
     else
         NS.Util.Print("commands:")
         print("  " .. NS.T.text("accent", "/nb") .. " - open the window")
         print("  " .. NS.T.text("accent", "/nb book") .. " - roll the rest of it out")
-        print("  " .. NS.T.text("accent", "/nb config") .. " - open it on Settings")
+        print("  " .. NS.T.text("accent", "/nb config") .. " - open the options window")
         print("  " .. NS.T.text("accent", "/nb preview") .. " - toggle preview (test) mode")
         print("  " .. NS.T.text("accent", "/nb reply") .. " - toggle auto-reply")
         print("  " .. NS.T.text("accent", "/nb discord <link>") .. " - set the Discord invite")
+        print("  " .. NS.T.text("accent", "/nb channels <a, b>") .. " - extra channels to post to")
         print("  " .. NS.T.text("accent", "/nb minimap") .. " - show or hide the minimap button")
         print("  " .. NS.T.text("accent", "/nb reset") .. " - put the window back")
     end

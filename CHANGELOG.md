@@ -1,5 +1,55 @@
 # Nebbinator
 
+## 3.3.0 - 10 Sep 2026
+
+The Settings tab is gone. Settings live in the window every BiS addon wears.
+
+- **One options window, shared.** Arn, looking at BiSTools' Hub: *"this is
+  beautiful ... I want all option windows to look like this."* So the generic
+  half of that window moved into `BiSTheme/Options.lua` - self-guarded and
+  embedded under `Libs\` exactly like `Console.lua`, carrying its own primitives
+  so it borrows no widget kit from its host. Nebbinator is the second addon to
+  wear it; the third is a table and a TOC line.
+- **Four control kinds and no more**: toggle, 3-way seg, stepper, button. A
+  setting that fits none of them is a slash command, not a fifth kind. The
+  stepper clamps, so a setter that does not still cannot store junk.
+- **Where the Settings tab's contents went.** Sounds, cooldown, auto-reply, the
+  minimap button and the lead finder are rows in the options window. The logs
+  address is the box on the desk, where you use it. Extra channels became
+  `/nb channels <a, b>`. The alert sound became a stepper that plays each one as
+  you land on it, which beats a grid of ten buttons.
+- **`o` in the header** opens it, so does `/nb config`, and the box lights while
+  it is out.
+- **Every option calls the function the slash command owns.** None of them
+  writes a saved variable itself, and the tests drive both paths at the same key
+  and watch them agree - including the side effects, because a hand-written key
+  is right and a missing `Minimap:Update` is not.
+- **Both test suites read the TOC now.** `dev/theme.lua` kept its own copy of the
+  file list, drifted, and was still loading `UI/Pages/Responders.lua` a day after
+  the TOC dropped it - a suite testing an addon the client does not run.
+- 458 checks, plus 59 for the shared kit on its own.
+
+## 3.2.1 - 10 Sep 2026
+
+Four things the first desk got wrong, all of them things Arn saw and the tests
+did not.
+
+- **The window walked down the screen.** Every relayout - pinning a channel,
+  rolling the book, a whisper landing - re-anchored the frame to `top - height`
+  instead of `top`, so it fell by its own height each time. The harness answered
+  `GetTop()` with a flat `600`, which is exactly why no test could see it; the
+  harness now does the anchor arithmetic and six checks watch the top edge.
+- **The filter row never drew.** Its container frame had one anchor and no
+  width, so it measured 0 wide and its buttons rendered nowhere - the desk
+  reserved the 22 px and showed a blank band under the send buttons. The buttons
+  hang off the desk directly now, like everything else on it.
+- **The minimap button was blank.** `Interface\Icons\INV_Scroll_11` is not in
+  this client. It is a star off the raid-target sheet now, which is core UI art
+  and cannot go missing. The "somebody waiting" ring was also a solid square
+  drawn *over* the icon; it is a pad *behind* it, and the star brightens.
+- **The logs box showed the tail of the address.** `SetText` leaves the cursor
+  at the end, so a long URL read `cter/us/dreamscythe/[name]`. Cursor home.
+
 ## 3.2.0 - 10 Sep 2026
 
 The desk, and the book behind it.

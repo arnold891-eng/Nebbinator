@@ -2,12 +2,13 @@
 ## Title: |cffb980ffBiS|r Nebbinator
 ## Notes: Guild recruitment in one window: build the ad, post it, and work everyone who whispers back.
 ## Author: Arn
-## Version: 3.2.0
+## Version: 3.3.0
 ## OptionalDeps: BiSTheme
 ## SavedVariables: NebbinatorDB, NubbinatorDB
 ## DefaultState: enabled
 
 Libs\BiSTheme\Console.lua
+Libs\BiSTheme\Options.lua
 Libs\LibBiSComm-1.0\LibBiSComm-1.0.lua
 
 Core\Util.lua
@@ -19,9 +20,9 @@ UI\Kit.lua
 UI\Window.lua
 UI\SendBar.lua
 UI\Desk.lua
+UI\Options.lua
 UI\Pages\Recruit.lua
 UI\Pages\Message.lua
 UI\Pages\Replies.lua
-UI\Pages\Settings.lua
 UI\Pages\About.lua
 UI\Minimap.lua
