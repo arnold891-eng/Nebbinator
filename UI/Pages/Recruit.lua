@@ -199,13 +199,9 @@ function UI:BuildRecruit(page)
     end)
     self.previewBox:SetPoint("TOPLEFT", 0, previewTop - 18)
 
-    -- send bar -----------------------------------------------------
-    local sendCap = K.fs(page, "SEND TO", 10, "dim")
-    sendCap:SetPoint("TOPLEFT", 2, previewTop - 110)
-
-    local holder = self:SendBar(page, w)
-    holder:SetPoint("TOPLEFT", 0, previewTop - 126)
-    self.recruitSend = holder
+    -- No send bar here: the desk owns posting, and two of them would drift.
+    local note = K.fs(page, "The channel buttons live on the desk, above the list.", 10, "dim")
+    note:SetPoint("TOPLEFT", 2, previewTop - 110)
 
     return page
 end

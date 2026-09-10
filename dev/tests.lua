@@ -6,8 +6,8 @@ local ROOT = os.getenv("NEB") or (HERE .. "/..")
 local FILES = {
     "Libs/BiSTheme/Console.lua", "Libs/LibBiSComm-1.0/LibBiSComm-1.0.lua",
     "Core/Util.lua", "Core/Init.lua", "Core/Message.lua", "Core/Responders.lua",
-    "UI/Kit.lua", "UI/Window.lua", "UI/SendBar.lua",
-    "UI/Pages/Responders.lua", "UI/Pages/Recruit.lua", "UI/Pages/Message.lua",
+    "UI/Kit.lua", "UI/Window.lua", "UI/SendBar.lua", "UI/Desk.lua",
+    "UI/Pages/Recruit.lua", "UI/Pages/Message.lua",
     "UI/Pages/Replies.lua", "UI/Pages/Settings.lua", "UI/Pages/About.lua",
     "UI/Minimap.lua",
 }
@@ -41,7 +41,7 @@ H.section("one window, six tabs")
 local UI = NS.UI
 H.ok(UI.frame ~= nil, "window built at login")
 H.eq(UI.frame:IsShown(), false, "starts hidden")
-H.eq(#UI.PAGES, 6, "six pages")
+H.eq(#UI.PAGES, 5, "five pages in the book")
 for _, name in ipairs(UI.PAGES) do
     H.ok(UI.pages[name] ~= nil, "page exists: " .. name)
 end
@@ -65,20 +65,22 @@ for _, name in ipairs(UI.PAGES) do
 end
 
 H.eq(NS.db.uiTab, "About", "last tab remembered")
-UI:ShowTab("Responders")
+UI:ShowTab("Recruit")
 
 H.section("toggle")
 UI:Toggle()
 H.eq(UI.frame:IsShown(), true, "toggle opens a closed window")
 UI:Toggle()
 H.eq(UI.frame:IsShown(), false, "toggle closes an open window")
-UI:Toggle("Responders")
-H.eq(UI.frame:IsShown(), true, "toggle with a tab opens")
-H.eq(UI:ShownTab(), "Responders", "...on that tab")
+UI:Toggle("Settings")
+H.eq(UI.frame:IsShown(), true, "toggle with a page opens")
+H.eq(UI:ShownTab(), "Settings", "...on that page")
+H.ok(UI.bookOpen, "...with the book rolled out")
 UI:ShowTab("Recruit")
-UI:Toggle("Responders")
-H.eq(UI.frame:IsShown(), true, "toggle to another tab keeps it open")
-H.eq(UI:ShownTab(), "Responders", "...and switches to it")
+UI:Toggle("Settings")
+H.eq(UI.frame:IsShown(), true, "toggle to another page keeps it open")
+H.eq(UI:ShownTab(), "Settings", "...and switches to it")
+UI:ToggleBook(false)
 
 H.section("every control round-trips")
 local EXPECTED = {
@@ -196,8 +198,7 @@ do
 end
 
 H.section("send bar")
-UI:ShowTab("Responders")
-local bar = UI.respondersSend
+local bar = UI.send
 H.ok(#bar.buttons >= 8, "a button per channel plus yell/say/guild", #bar.buttons)
 local labels = {}
 for _, b in ipairs(bar.buttons) do labels[#labels + 1] = b.text:GetText() end
@@ -237,75 +238,56 @@ H.ok(entry ~= nil, "the whisper landed on the list")
 H.eq(entry.class, "MAGE", "class came free from the whisper GUID")
 H.eq(#H.who, 0, "no protected SendWho fired from an event")
 
-UI:RefreshResponders()
-local card = UI.rows[1]
-H.ok(card ~= nil, "a card was built")
-H.ok(card.name:GetText():find("Kumlance", 1, true) ~= nil, "card shows the name")
-H.ok(card.info:GetText():find("press Who", 1, true) ~= nil, "card asks for a Who before it has a level")
+UI:LayoutDesk()
+local row = UI.rows[1]
+H.ok(row ~= nil, "a queue row was built")
+H.ok(row.name:GetText():find("Kumlance", 1, true) ~= nil, "the row names them")
+H.eq(row:GetHeight(), UI.ROW_H, "one line tall, like BiSJC's queue")
 
-card.who:Click()
-H.eq(#H.who, 1, "Who fires SendWho exactly once, from the click")
-H.filters.CHAT_MSG_SYSTEM(nil, "CHAT_MSG_SYSTEM",
-    "|Hplayer:Kumlance|h[Kumlance]|h: Level 70 Gnome Mage <Old Guild> - Shattrath City")
-R:OnSystemMessage("|Hplayer:Kumlance|h[Kumlance]|h: Level 70 Gnome Mage <Old Guild> - Shattrath City")
-H.eq(NS.db.responders.Kumlance.level, 70, "level parsed out of the chat line")
-H.eq(NS.db.responders.Kumlance.guild, "Old Guild", "guild parsed too")
-UI:RefreshResponders()
-H.ok(card.info:GetText():find("Level 70", 1, true) ~= nil, "the card picked it up")
+-- clicking a row serves them, and only then do the buttons appear
+H.ok(not UI.served:IsShown(), "nothing served yet, no block")
+row:Click()
+H.eq(UI.serving, "Kumlance", "clicking a row serves them")
+H.ok(UI.served:IsShown(), "and the block opens")
+H.ok(UI.served.title:GetText():find("Kumlance", 1, true) ~= nil, "naming who is being served")
+H.ok(UI.served.who ~= UI.served.title, "the Who button did not eat the Serving label")
+row:Click()
+H.ok(UI.serving == nil, "clicking again puts them down")
+H.ok(not UI.served:IsShown(), "and the block closes")
+row:Click()
 
-H.section("the card fits inside itself")
+UI.served.whisper:Click()
+H.ok(H.chatOpened ~= nil, "Whisper opens a whisper to them", tostring(H.chatOpened))
+
+H.section("the served block fits inside itself")
 do
-    -- the arithmetic a screenshot would show: nothing may sit on top of
-    -- anything else, and nothing may hang out of the bottom of the card
-    local h = card:GetHeight()
-    local _, msgY = card.message:OffsetFor("TOPLEFT")
-    local msgTop, msgBottom = -msgY, -msgY + (card.message._h or 12)
-    local _, actY = card.status:OffsetFor("BOTTOMLEFT")
-    local actTop = h - actY - card.status:GetHeight()
-    local _, quickY = card.quick[1]:OffsetFor("BOTTOMLEFT")
-    local quickTop = h - quickY - card.quick[1]:GetHeight()
-    H.ok(msgBottom <= actTop, "the message line clears the action row",
-         ("message ends %d, actions start %d"):format(msgBottom, actTop))
-    H.ok(actTop + card.status:GetHeight() <= quickTop,
-         "the action row clears the quick replies",
-         ("actions end %d, quick starts %d"):format(actTop + card.status:GetHeight(), quickTop))
-    H.ok(quickTop + card.quick[1]:GetHeight() <= h, "the quick replies stay inside the card")
-    local nameX = select(1, card.name:OffsetFor("TOPLEFT"))
-    H.ok(nameX >= 8, "the name clears the status stripe", nameX)
-
-    local total = 0
-    for i = 1, 6 do total = total + (card.quick[1]:GetWidth() or 0) end
-    H.ok(card.quick[1]:GetWidth() * 4 + 9 + 20 <= card:GetWidth(),
-         "four quick replies fit across the card")
-    local actionsWide = card.status:GetWidth() + card.whisper:GetWidth() + card.discord:GetWidth()
-        + card.invite:GetWidth() + card.who:GetWidth() + card.logs:GetWidth()
-        + card.remove:GetWidth() + 6 * 4 + 20
-    H.ok(actionsWide <= card:GetWidth(), "every action button fits on one row",
-         ("needs %d, has %d"):format(actionsWide, card:GetWidth()))
+    local s2 = UI.served
+    local h = s2:GetHeight()
+    local _, msgY = s2.message:OffsetFor("TOPLEFT")
+    local msgBottom = -msgY + (s2.message._h or 12)
+    local _, actY = s2.whisper:OffsetFor("TOPLEFT")
+    H.ok(msgBottom <= -actY, "the message clears the action row",
+         ("message ends %d, actions start %d"):format(msgBottom, -actY))
+    local _, quickY = s2.quick[1]:OffsetFor("TOPLEFT")
+    H.ok(-actY + s2.whisper:GetHeight() <= -quickY, "the actions clear the quick replies")
+    H.ok(-quickY + s2.quick[1]:GetHeight() <= h, "the quick replies stay inside the block")
+    local wide = s2.whisper:GetWidth() + s2.discord:GetWidth() + s2.invite:GetWidth()
+        + s2.who:GetWidth() + s2.logs:GetWidth() + 4 * 4 + 20
+    H.ok(wide <= UI.DESK_W, "every action button fits one row of the desk",
+         ("needs %d, has %d"):format(wide, UI.DESK_W))
+    H.ok(s2.quick[1]:GetWidth() * 4 + 9 + 20 <= UI.DESK_W, "four quick replies fit across")
 end
-
-H.section("quick replies from the card")
-NS.db.previewMode = false
-local qBefore = #H.sent
-for slot = 1, 4 do card.quick[slot]:Click() end
-H.eq(#H.sent - qBefore, 4, "four buttons, four whispers")
-H.eq(H.sent[#H.sent].chatType, "WHISPER", "...as whispers")
-H.eq(H.sent[#H.sent].target, "Kumlance", "...to that player")
-H.eq(NS.db.responders.Kumlance.status, "contacted", "sending one moves them off New")
-UI:RefreshResponders()
-local gr, gg, gb = NS.T.rgb("good")
-H.isColor(card.quick[1].text._color, gr, gg, gb, "a sent quick reply is painted green")
 
 H.section("status pipeline")
 R:SetStatus("Kumlance", "new")
-card.status:Click("LeftButton")
+UI.served.status:Click("LeftButton")
 H.eq(NS.db.responders.Kumlance.status, "contacted", "left click moves the status forward")
-card.status:Click("RightButton")
+UI.served.status:Click("RightButton")
 H.eq(NS.db.responders.Kumlance.status, "new", "right click moves it back")
 
 H.section("logs")
 NS.db.logsUrl = "https://fresh.warcraftlogs.com/character/us/dreamscythe/{name}"
-card.logs:Click()
+UI.served.logs:Click()
 local box = NS.Kit.copyBox
 H.ok(box ~= nil and box:IsShown(), "the copy box opened")
 H.eq(box.contents, "https://fresh.warcraftlogs.com/character/us/dreamscythe/kumlance",
@@ -416,12 +398,14 @@ H.ok(UI.con:Width() <= BUDGET, "prompt fits the header budget (idle)", UI.con:Wi
 
 -- nothing but the prompt and the button strip lives in that bar
 H.eq(UI.closeBtn.slot, -3, "close sits at its computed slot")
-H.eq(UI.closeBtn:GetWidth(), 12, "12 px wide, so the strip is 15")
-H.eq(UI.STRIP, 3 + UI.closeBtn:GetWidth(), "the strip is exactly the button plus its offset")
+H.eq(UI.bookBtn.slot, -17, "the book button sits at its own")
+H.eq(UI.closeBtn:GetWidth(), 12, "12 px boxes")
+H.eq(UI.bookBtn:GetWidth(), 12, "both of them")
+H.eq(UI.STRIP, 17 + UI.bookBtn:GetWidth(), "the strip is exactly the far button plus its offset")
 H.ok(UI.badge == nil and UI.preview == nil, "no badge, no preview pill - both are slots now")
 local inHeader = 0
 for _, fr in ipairs(H.frames) do if fr._parent == UI.head then inHeader = inHeader + 1 end end
-H.eq(inHeader, 1, "one frame in the header: the close button")
+H.eq(inHeader, 2, "two frames in the header: close and the book, nothing else")
 
 -- slots: state that lasts, cleared the moment it ends
 NS.db.responders = {}
@@ -451,6 +435,7 @@ H.ok(sawName and sawCount, "the slots rotate through name and count")
 
 -- Watch one whole cycle boundary go by and record what the words did. The
 -- handoff asks for exactly this shape: alpha down, swap at zero, alpha up.
+UI:Clear() step(4)
 local sawOut, sawMid, sawZero, sawSolid = false, false, false, false
 local zeroText
 step(12, function()
@@ -498,7 +483,7 @@ local chat1 = #H.prints
 NS.db.previewMode = false
 NS.db.templates[NS.db.activeTemplate].text = "<{guild}> needs {needs}"
 H.clock = H.clock + 999 UI:UpdateSendTimers()
-for _, b in ipairs(UI.respondersSend.buttons) do if b.label == "Yell" then b:Click() end end
+for _, b in ipairs(UI.send.buttons) do if b.label == "Yell" then b:Click() end end
 H.eq(#H.prints, chat1, "posting the ad says nothing in chat")
 H.ok(await("sent to yell", 3), "the prompt says it went", plain())
 
@@ -507,20 +492,24 @@ local chat2 = #H.prints
 SlashCmdList["NEBBINATOR"]("help")
 H.ok(#H.prints > chat2, "/nb help still answers in the chat frame")
 
-H.section("every responder row fits the card")
+H.section("every queue row fits the desk")
 NS.db.responders = {}
 R:OnWhisper("recruiting? i am a resto shaman with kara gear and logs",
     "Kumlanceroo", nil,nil,nil,nil,nil,nil,nil,nil,nil, "Player-1-1")
 NS.db.responders.Kumlanceroo.level = 70
 NS.db.responders.Kumlanceroo.className = "Shaman"
 NS.db.responders.Kumlanceroo.guild = "Some Very Long Guild Name"
-UI:ShowTab("Responders")
-UI:RefreshResponders()
-for i, card in ipairs(UI.rows) do
-    if card:IsShown() then
-        H.ok(card.name:GetStringWidth() + card.info:GetStringWidth() + 12 <= card:GetWidth(),
-             "row " .. i .. ": name + info fit the card",
-             math.floor(card.name:GetStringWidth() + card.info:GetStringWidth() + 12) .. " of " .. card:GetWidth())
+UI:LayoutDesk()
+for i, r in ipairs(UI.rows) do
+    if r:IsShown() then
+        local _, nameX = 0, select(1, r.name:OffsetFor("LEFT"))
+        local infoX = select(1, r.info:OffsetFor("LEFT"))
+        H.ok(nameX + r.name:GetStringWidth() <= infoX,
+             "row " .. i .. ": the name clears the class column",
+             math.floor(nameX + r.name:GetStringWidth()) .. " of " .. infoX)
+        H.ok(infoX + r.info:GetStringWidth() + 60 <= UI.DESK_W,
+             "row " .. i .. ": name + class + age fit the desk",
+             math.floor(infoX + r.info:GetStringWidth() + 60) .. " of " .. UI.DESK_W)
     end
 end
 
@@ -575,5 +564,140 @@ lib._booted = nil
 NS.Comm.Boot()
 H.ok(not lib:Enabled(), "a saved off switch is restored at boot")
 lib:SetEnabled(true)
+
+--------------------------------------------------------------------
+-- the desk: as tall as the list and no taller
+--------------------------------------------------------------------
+
+H.section("the window grows as whispers land and shrinks as they are dealt with")
+UI:ToggleBook(false)
+UI.serving = nil
+NS.db.responders = {}
+UI.filter = "all"
+UI:LayoutDesk()
+
+local empty = UI.frame:GetHeight()
+H.eq(UI.frame:GetWidth(), UI.DESK_W, "rolled up, the window is desk width")
+
+local heights = { [0] = empty }
+for i = 1, 4 do
+    NS.db.responders["P" .. i] = { name = "P" .. i, status = "new",
+        timestamp = os.time() - i, messages = { { text = "hi", at = os.time() } } }
+    UI:LayoutDesk()
+    heights[i] = UI.frame:GetHeight()
+    H.ok(heights[i] > heights[i - 1], i .. " waiting is taller than " .. (i - 1),
+         heights[i - 1] .. " -> " .. heights[i])
+end
+H.eq(heights[1] - heights[0], UI.ROW_H, "each one costs exactly one row")
+
+-- and back down again
+for i = 4, 1, -1 do
+    NS.db.responders["P" .. i] = nil
+    UI:LayoutDesk()
+    H.eq(UI.frame:GetHeight(), heights[i - 1], "removing one gives the height back")
+end
+H.eq(UI.frame:GetHeight(), empty, "empty desk is back to its smallest")
+
+-- a long list stops growing and scrolls instead
+for i = 1, 40 do
+    NS.db.responders["Q" .. i] = { name = "Q" .. i, status = "new",
+        timestamp = os.time() - i, messages = { { text = "hi", at = os.time() } } }
+end
+UI:LayoutDesk()
+local tall = UI.frame:GetHeight()
+H.ok(tall <= empty + UI.MAX_ROWS * UI.ROW_H + 2, "40 waiting is capped at MAX_ROWS, not 40 rows", tall)
+H.ok(UI.listScroll.track:IsShown(), "and the list scrolls instead")
+H.ok(UI.rows[1]:IsShown(), "the rows are still there to scroll through")
+
+-- serving one opens the block and costs its height, exactly once
+local before = UI.frame:GetHeight()
+UI:Serve("Q1")
+H.eq(UI.frame:GetHeight(), before + UI.SERVED_H, "serving opens the block")
+UI:Serve("Q2")
+H.eq(UI.frame:GetHeight(), before + UI.SERVED_H, "serving somebody else does not stack another")
+UI:Serve(nil)
+H.eq(UI.frame:GetHeight(), before, "putting them down closes it again")
+
+-- a served responder who gets removed stops being served
+UI:Serve("Q1")
+NS.Responders:Remove("Q1")
+H.ok(UI:ServedName() == nil, "removing the served one un-serves them")
+H.eq(UI.frame:GetHeight(), UI.frame:GetHeight(), "and the block goes with them")
+NS.db.responders = {}
+UI:LayoutDesk()
+
+H.section("the book rolls up and down")
+H.ok(not UI.book:IsShown(), "rolled up by default")
+local rolled = UI.frame:GetHeight()
+UI:ToggleBook(true)
+H.ok(UI.book:IsShown(), "the button rolls it out")
+H.eq(UI.frame:GetWidth(), UI.BOOK_W, "and the window widens for the rail")
+H.eq(UI.frame:GetHeight(), rolled + UI.BOOK_H, "and grows by exactly the book")
+H.ok(UI.bookBtn.marked, "the header button lights while it is out")
+UI:ToggleBook(false)
+H.eq(UI.frame:GetWidth(), UI.DESK_W, "rolling it up gives the width back")
+H.eq(UI.frame:GetHeight(), rolled, "and the height")
+H.ok(not UI.bookBtn.marked, "and the light goes out")
+-- the desk keeps working while the book is out
+UI:ToggleBook(true)
+NS.db.responders.Zed = { name = "Zed", status = "new", timestamp = os.time(), messages = {} }
+UI:LayoutDesk()
+H.eq(UI.frame:GetHeight(), rolled + UI.ROW_H + UI.BOOK_H, "a whisper still grows the desk under an open book")
+NS.db.responders = {}
+UI:ToggleBook(false)
+UI:LayoutDesk()
+
+H.section("send buttons: the clock never sits on the label")
+do
+    local widest
+    for _, b in ipairs(UI.send.buttons) do
+        if b.chatType then
+            b.timer:SetText("|cfff08cb088|r")           -- the widest clock it can show
+            -- the label must be LEFT anchored: centred in a box that also holds
+            -- a clock is exactly how "/2 Trade" got a "23" through it
+            local point = b.text:OffsetFor("LEFT")
+            H.ok(point ~= nil, "label is left-anchored, not centred: " .. tostring(b.label))
+            local labelEnd = 7 + b.text:GetStringWidth()
+            local clockStart = b:GetWidth() - 6 - b.timer:GetStringWidth()
+            H.ok(labelEnd <= clockStart,
+                 "clock clears the label: " .. tostring(b.label),
+                 math.floor(labelEnd) .. " vs " .. math.floor(clockStart))
+            if not widest or b:GetWidth() > widest:GetWidth() then widest = b end
+        end
+    end
+    H.ok(widest ~= nil, "there were buttons to check")
+end
+
+H.section("hiding a channel you never post to")
+local function labels()
+    local out = {}
+    for _, b in ipairs(UI.send.buttons) do if b.chatType then out[#out + 1] = b.label end end
+    return out
+end
+local all = #labels()
+H.ok(all >= 8, "every target shows by default", all)
+H.ok(not UI.AnyHidden(), "nothing hidden until you hide it")
+
+local trade
+for _, b in ipairs(UI.send.buttons) do if b.label == "/2 Trade" then trade = b end end
+H.ok(trade ~= nil, "found Trade")
+trade:Click("RightButton")
+H.eq(#labels(), all - 1, "right-click takes it off the desk")
+H.ok(UI.AnyHidden(), "and the addon knows something is hidden")
+H.eq(NS.db.hiddenChannels["/2 Trade"], true, "remembered in the saved variables")
+
+-- the arrow brings the whole set back for a moment
+local arrow
+for _, b in ipairs(UI.send.buttons) do if not b.chatType then arrow = b end end
+H.ok(arrow ~= nil, "an arrow appeared once something was hidden")
+arrow:Click()
+H.eq(#labels(), all, "unrolled, every target is back")
+for _, b in ipairs(UI.send.buttons) do if b.label == "/2 Trade" then trade = b end end
+trade:Click("RightButton")
+H.eq(NS.db.hiddenChannels["/2 Trade"], nil, "right-click again un-hides it")
+UI.sendExpanded = false
+UI:LayoutDesk()
+H.eq(#labels(), all, "and it is back on the desk for good")
+
 
 H.report()

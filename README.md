@@ -1,20 +1,38 @@
-# Nebbinator 3.1
+# Nebbinator 3.2
 
 Guild recruitment for WoW TBC (Anniversary), in one window.
 
-`/nb` opens it. Six tabs down the left rail:
+`/nb` opens the **desk**: the prompt header, one line per person waiting, the
+one you are serving opened up underneath, and the send buttons along the foot.
+Nothing else. It is 620 px wide and only as tall as the work in it - one row
+taller per whisper, one row shorter per accept or decline. Past ten waiting it
+stops growing and the list scrolls.
+
+Click a line to serve that person: their block opens with their class, level,
+guild, the logs link, the quick replies and the Accept / Decline / Who buttons.
+Click the same line again to close it.
+
+Everything else is a **book** behind the header's list box. Open it and the
+window widens to 820 and a tab rail appears beside the desk; close it and it is
+a desk again. It remembers which way you left it.
 
 | Tab | What lives there |
 | --- | --- |
-| **Responders** | everyone who whispered you, and the send bar |
 | **Recruit** | class/spec counts, raid times, the live preview |
 | **Message** | guild details, saved templates, tokens |
 | **Replies** | the four quick replies and the auto-reply |
 | **Settings** | sounds, cooldown, minimap, logs address, lead finder |
 | **About** | how it works, and every command |
 
-Minimap button: left click opens the window, right click jumps to Responders.
-It grows a violet ring when somebody is waiting.
+Minimap button: left click opens the desk, right click opens the book. It grows
+a violet ring when somebody is waiting.
+
+## The send buttons pin
+
+Right-click a channel button to take it off the desk - most of them you never
+post to, and they were eating the foot. The `v` arrow at the end brings the
+hidden ones back. Each button counts its own cooldown down in its right corner
+while the label sits on the left.
 
 ## The header is a prompt
 
@@ -36,9 +54,10 @@ answer to somebody whispering you first.
 
 ## Commands
 
-    /nb                open the window
-    /nb r              open it on Responders
-    /nb config         open it on Settings
+    /nb                open the desk
+    /nb book           roll the tab rail out, or back up
+    /nb r              open the desk on the queue
+    /nb config         open the book on Settings
     /nb preview        toggle preview mode (print, never send)
     /nb reply          toggle auto-reply
     /nb discord <url>  set the Discord link
@@ -103,9 +122,10 @@ copy of `Console.lua` so the prompt works either way.
     Core/Message.lua     tokens, rendering, channels, sending
     Core/Responders.lua  whisper capture, auto-reply, /who parsing
     UI/Kit.lua           flat primitives and widgets
-    UI/Window.lua        the frame, the rail, the tabs, ConfigSet/Get
-    UI/SendBar.lua       channel buttons and their timers
-    UI/Pages/*.lua       one file per tab
+    UI/Window.lua        the frame, the desk/book sizing, the rail, ConfigSet/Get
+    UI/SendBar.lua       channel buttons, their timers, and pinning
+    UI/Desk.lua          the queue, the served block, the auto-height
+    UI/Pages/*.lua       one file per tab in the book
     UI/Minimap.lua       minimap button
     dev/                 headless test harness - see dev/README.md
     CHANGELOG.md         what changed, per version
