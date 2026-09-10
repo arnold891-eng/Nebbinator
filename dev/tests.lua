@@ -3,14 +3,12 @@ local HERE = (arg and arg[0] or ""):match("^(.*)[/\\]") or "."
 local H = dofile(HERE .. "/harness.lua")
 local ROOT = os.getenv("NEB") or (HERE .. "/..")
 
-local FILES = {
-    "Libs/BiSTheme/Console.lua", "Libs/LibBiSComm-1.0/LibBiSComm-1.0.lua",
-    "Core/Util.lua", "Core/Init.lua", "Core/Message.lua", "Core/Responders.lua",
-    "UI/Kit.lua", "UI/Window.lua", "UI/SendBar.lua", "UI/Desk.lua",
-    "UI/Pages/Recruit.lua", "UI/Pages/Message.lua",
-    "UI/Pages/Replies.lua", "UI/Pages/Settings.lua", "UI/Pages/About.lua",
-    "UI/Minimap.lua",
-}
+-- The TOC is the truth for what loads and in what order. This used to be a
+-- hand-kept copy of the list, which is the same duplication that let NS.VERSION
+-- disagree with the TOC for two weeks (landmine 0c) - a file added to one and
+-- not the other is a test suite exercising a different addon than the client
+-- loads. BiSTools has read its TOC since day one; this now does too.
+local FILES = H.TOC(ROOT, "Nebbinator.toc")
 
 -- an existing v1 profile, so the upgrade path is exercised on every run
 _G.NubbinatorDB = {
@@ -37,11 +35,11 @@ H.ok(NS.db.responders.Dps4 ~= nil, "v1 responders carried over")
 H.eq(NS.db.windows, nil, "old two-window positions dropped")
 H.eq(#NS.db.quickReplies, 4, "four quick replies")
 
-H.section("one window, six tabs")
+H.section("the desk, and four pages in the book")
 local UI = NS.UI
 H.ok(UI.frame ~= nil, "window built at login")
 H.eq(UI.frame:IsShown(), false, "starts hidden")
-H.eq(#UI.PAGES, 5, "five pages in the book")
+H.eq(#UI.PAGES, 4, "four pages in the book")
 for _, name in ipairs(UI.PAGES) do
     H.ok(UI.pages[name] ~= nil, "page exists: " .. name)
 end
@@ -72,14 +70,14 @@ UI:Toggle()
 H.eq(UI.frame:IsShown(), true, "toggle opens a closed window")
 UI:Toggle()
 H.eq(UI.frame:IsShown(), false, "toggle closes an open window")
-UI:Toggle("Settings")
+UI:Toggle("Replies")
 H.eq(UI.frame:IsShown(), true, "toggle with a page opens")
-H.eq(UI:ShownTab(), "Settings", "...on that page")
+H.eq(UI:ShownTab(), "Replies", "...on that page")
 H.ok(UI.bookOpen, "...with the book rolled out")
 UI:ShowTab("Recruit")
-UI:Toggle("Settings")
+UI:Toggle("Replies")
 H.eq(UI.frame:IsShown(), true, "toggle to another page keeps it open")
-H.eq(UI:ShownTab(), "Settings", "...and switches to it")
+H.eq(UI:ShownTab(), "Replies", "...and switches to it")
 UI:ToggleBook(false)
 
 H.section("every control round-trips")
@@ -89,9 +87,11 @@ local EXPECTED = {
     "templateName", "templateText",
     "quick1Label", "quick1Text", "quick4Label", "quick4Text",
     "autoReply", "replyMode", "keywords", "replyText", "replyCooldown", "replyRate", "skipGuildies",
-    "previewMode", "sendCooldown", "playSound", "soundOnlyNew", "sound",
-    "minimap", "leadFinder", "logsUrl", "customChannels",
 }
+-- previewMode / sendCooldown / playSound / soundOnlyNew / sound / minimap /
+-- leadFinder left with the Settings tab: they live in the options window now
+-- and are exercised in "the options window" below. logsUrl is the box on the
+-- desk; customChannels is /nb channels.
 local ids = {}
 for _, id in ipairs(UI:IDs()) do ids[id] = true end
 for _, id in ipairs(EXPECTED) do H.ok(ids[id], "control exists: " .. id) end
@@ -105,40 +105,23 @@ local SAMPLES = {
     quick1Label = "Times?", quick1Text = "Do the raid times work for you?",
     quick4Label = "Signups", quick4Text = "Sign ups are a must.",
     keywords = "recruit,guild,inv", replyText = "Join us: {discord}",
-    replyCooldown = 600, replyRate = 4, logsUrl = "https://x/{name}", customChannels = "world",
-    sendCooldown = 25, sound = "ping", replyMode = "any",
+    replyCooldown = 600, replyRate = 4, replyMode = "any",
 }
 for id, value in pairs(SAMPLES) do
     H.ok(UI:Set(id, value), "Set works: " .. id)
     H.eq(UI:Get(id), value, "round-trip: " .. id)
 end
 
-for _, id in ipairs({ "override", "autoReply", "skipGuildies", "previewMode",
-                      "playSound", "soundOnlyNew", "minimap", "leadFinder" }) do
+for _, id in ipairs({ "override", "autoReply", "skipGuildies" }) do
     UI:Set(id, true);  H.eq(UI:Get(id), true,  "toggle on: " .. id)
     UI:Set(id, false); H.eq(UI:Get(id), false, "toggle off: " .. id)
 end
 
 H.section("sliders clamp instead of storing junk")
-UI:Set("sendCooldown", 9999)
-H.eq(NS.db.sendCooldown, 120, "cooldown clamps to the top of its range")
-UI:Set("sendCooldown", -50)
-H.eq(NS.db.sendCooldown, 3, "cooldown clamps to the bottom")
 UI:Set("replyRate", 500)
 H.eq(NS.db.autoReply.maxPerMinute, 20, "rate cap clamps")
-UI:Set("sendCooldown", 10)
 
 H.section("the window writes the same key the slash command owns")
-NS.db.previewMode = false
-UI:Set("previewMode", true)
-H.eq(NS.db.previewMode, true, "checkbox turned preview mode on")
-local before = NS.db.previewMode
-UI:Set("previewMode", true)
-H.eq(NS.db.previewMode, before, "setting it on again does not flip it back")
-SlashCmdList["NEBBINATOR"]("preview")
-H.eq(NS.db.previewMode, false, "/nb preview turns the same key off")
-H.eq(UI:Get("previewMode"), false, "the checkbox reads the slash command's change")
-
 NS.db.autoReply.enabled = false
 UI:Set("autoReply", true)
 H.eq(NS.db.autoReply.enabled, true, "checkbox turned auto-reply on")
@@ -147,18 +130,12 @@ H.eq(NS.db.autoReply.enabled, true, "...and again is a no-op, not a flip")
 SlashCmdList["NEBBINATOR"]("reply")
 H.eq(NS.db.autoReply.enabled, false, "/nb reply turns the same key off")
 
-NS.db.minimap.hide = false
-UI:Set("minimap", false)
-H.eq(NS.db.minimap.hide, true, "unchecking the minimap box hides it")
-SlashCmdList["NEBBINATOR"]("minimap")
-H.eq(NS.db.minimap.hide, false, "/nb minimap shows it again")
-
 SlashCmdList["NEBBINATOR"]("discord discord.gg/fromslash")
 H.eq(UI:Get("discord"), "discord.gg/fromslash", "/nb discord reaches the field")
 
 H.section("checkbox paint")
-UI:ShowTab("Settings")
-UI:Set("leadFinder", true)
+UI:ShowTab("Replies")
+UI:Set("autoReply", true)
 UI:Refresh()
 local ar, ag, ab = NS.T.rgb("accent")
 local found
@@ -399,13 +376,18 @@ H.ok(UI.con:Width() <= BUDGET, "prompt fits the header budget (idle)", UI.con:Wi
 -- nothing but the prompt and the button strip lives in that bar
 H.eq(UI.closeBtn.slot, -3, "close sits at its computed slot")
 H.eq(UI.bookBtn.slot, -17, "the book button sits at its own")
-H.eq(UI.closeBtn:GetWidth(), 12, "12 px boxes")
-H.eq(UI.bookBtn:GetWidth(), 12, "both of them")
-H.eq(UI.STRIP, 17 + UI.bookBtn:GetWidth(), "the strip is exactly the far button plus its offset")
+H.eq(UI.optBtn.slot, -31, "and options at its own")
+for _, b in ipairs({ UI.closeBtn, UI.bookBtn, UI.optBtn }) do
+    H.eq(b:GetWidth(), 12, "12 px boxes, all of them")
+end
+H.eq(UI.STRIP, 31 + UI.optBtn:GetWidth(), "the strip is exactly the far button plus its offset")
 H.ok(UI.badge == nil and UI.preview == nil, "no badge, no preview pill - both are slots now")
 local inHeader = 0
 for _, fr in ipairs(H.frames) do if fr._parent == UI.head then inHeader = inHeader + 1 end end
-H.eq(inHeader, 2, "two frames in the header: close and the book, nothing else")
+-- This count is the guard that catches the NEXT thing somebody adds to a 16 px
+-- bar without predicting what it is. It went 2 -> 3 on purpose when Settings
+-- stopped being a tab and became the options window.
+H.eq(inHeader, 3, "three frames in the header: close, the book, options")
 
 -- slots: state that lasts, cleared the moment it ends
 NS.db.responders = {}
@@ -699,5 +681,220 @@ UI.sendExpanded = false
 UI:LayoutDesk()
 H.eq(#labels(), all, "and it is back on the desk for good")
 
+
+H.section("the window stays where it was put")
+-- Arn, 10 Sep: "every time I right click to pin or unpin it shifts the window
+-- down." Relayout re-anchored to `top - height` instead of `top`, so the frame
+-- fell by its own height on every single call. The harness used to answer
+-- GetTop() with a constant, which is why nothing here could see it.
+UI:Open()
+UI:LayoutDesk()
+local topBefore = UI.frame:GetTop()
+local leftBefore = UI.frame:GetLeft()
+H.ok(topBefore ~= nil, "the window has a top edge", tostring(topBefore))
+
+for _, b in ipairs(UI.send.buttons) do
+    if b.label == "/2 Trade" then b:Click("RightButton") break end
+end
+H.eq(UI.frame:GetTop(), topBefore, "pinning a channel does not move the top edge")
+H.eq(UI.frame:GetLeft(), leftBefore, "and it does not move sideways either")
+
+local heightPinned = UI.frame:GetHeight()
+for _, b in ipairs(UI.send.buttons) do
+    if b.label == "/2 Trade" then b:Click("RightButton") break end
+end
+H.eq(UI.frame:GetTop(), topBefore, "un-pinning does not move it back down either")
+
+UI:ToggleBook(true)
+H.eq(UI.frame:GetTop(), topBefore, "rolling the book out grows downward, not off the top")
+H.ok(UI.frame:GetHeight() > heightPinned, "and it really did get taller",
+     UI.frame:GetHeight() .. " vs " .. heightPinned)
+UI:ToggleBook(false)
+H.eq(UI.frame:GetTop(), topBefore, "rolling it back up leaves the top alone")
+
+NS.db.responders["Topcheck"] = { name = "Topcheck", status = "new",
+    timestamp = os.time(), messages = { { text = "any room?", at = os.time() } } }
+UI:LayoutDesk()
+H.eq(UI.frame:GetTop(), topBefore, "a whisper landing does not move it either")
+NS.db.responders["Topcheck"] = nil
+UI:LayoutDesk()
+H.eq(UI.frame:GetTop(), topBefore, "and neither does dealing with them")
+
+H.section("the filter buttons are on the desk, not in a phantom frame")
+-- The old container had one anchor and no width, so it measured 0 wide and its
+-- children never drew: the desk reserved 22 px and showed a blank band.
+H.eq(#UI.filterButtons, 6, "six filters")
+for _, entry in ipairs(UI.filterButtons) do
+    H.eq(entry.button:GetParent(), UI.desk, "the " .. entry.key .. " button hangs off the desk")
+    local x, y = entry.button:OffsetFor("TOPLEFT")
+    H.ok(x ~= nil and y ~= nil, "the " .. entry.key .. " button is anchored")
+    H.ok(x >= 0 and x + entry.button:GetWidth() <= UI.DESK_W,
+         "the " .. entry.key .. " button fits across the desk",
+         tostring(x and (x + entry.button:GetWidth())) .. " of " .. UI.DESK_W)
+end
+-- and they do not sit on top of the count line below them
+do
+    local _, fy = UI.filterButtons[1].button:OffsetFor("TOPLEFT")
+    local _, cy = UI.countText:OffsetFor("TOPLEFT")
+    H.ok(cy < fy - 17, "the count line clears the filter row",
+         tostring(cy) .. " vs " .. tostring(fy))
+end
+
+H.section("the options window")
+-- Settings stopped being a tab (Arn, 10 Sep: "replaced - tab goes away") and
+-- became the window every BiS addon wears. Everything the tab used to prove is
+-- proved here instead, against the shared kit.
+local O = BiSTheme.OPTIONS
+local opt = UI:BuildOptions()
+
+local SECTIONS = { "nebbinator", "posting", "answering", "finding people" }
+local OPTIONS = {
+    "minimap button", "BiS channel (/biscomm)", "reset window position",
+    "preview - never sends", "cooldown per channel",
+    "auto-reply", "alert sound", "only the first one", "which sound",
+    "watch for \"LF guild\"",
+}
+-- Counted from a written-down list, NOT from UI:OptionSections() - deriving the
+-- expectation from the thing under test means deleting a section changes both
+-- sides and the assert cannot fail.
+local haveSections, haveOptions = {}, {}
+for _, s in ipairs(UI:OptionSections()) do
+    haveSections[s.title] = true
+    for _, o in ipairs(s.options) do haveOptions[o.label] = true end
+end
+for _, name in ipairs(SECTIONS) do H.ok(haveSections[name], "section: " .. name) end
+for _, name in ipairs(OPTIONS) do H.ok(haveOptions[name], "option: " .. name) end
+H.eq(#opt.rows, #SECTIONS + #OPTIONS, "one row per section header and per option")
+H.eq(opt:GetHeight(), O.HEADER + #opt.rows * O.ROW + O.PAD, "height is header + rows + pad")
+H.eq(opt:GetWidth(), O.W, "and it is the house width")
+H.ok(not opt:IsShown(), "built hidden; the toggle decides")
+
+-- budgets
+H.ok(opt.con:Width() <= O.W - 15 - 8, "the prompt fits its header", opt.con:Width())
+for _, r in ipairs(opt.rows) do
+    local budget = r.isSection and (O.W - 6 - O.CTL) or (O.W - O.INDENT - O.CTL)
+    H.ok(r.name:GetStringWidth() <= budget, "label fits: " .. tostring(r.name:GetText()),
+         math.floor(r.name:GetStringWidth()) .. " of " .. budget)
+    -- and every one of OUR labels was picked to fit outright: the ellipsis is
+    -- the net, not the plan
+    H.ok(not tostring(r.name:GetText()):find("%.%.%.$"),
+         "and was not trimmed to get there: " .. tostring(r.name:GetText()))
+end
+
+local function optRow(label)
+    for _, r in ipairs(opt.rows) do if r.opt and r.opt.label == label then return r end end
+end
+
+H.section("every option calls the function the slash command owns")
+-- The rule that matters: no `set` here writes a saved variable itself. Proven
+-- by driving the control and the slash command at the same key and watching
+-- them agree, both ways round.
+NS.db.previewMode = false
+opt:Paint()
+local prev = optRow("preview - never sends")
+H.ok(prev ~= nil, "there is a preview row")
+prev.ctl:Click()
+H.eq(NS.db.previewMode, true, "the box turned preview on")
+SlashCmdList["NEBBINATOR"]("preview")
+H.eq(NS.db.previewMode, false, "/nb preview turns the same key off")
+opt:Paint()
+H.eq(prev.ctl.on, false, "and the box reads the slash command's change")
+
+NS.db.minimap.hide = false
+NS.Minimap:Update()
+opt:Paint()
+local mm = optRow("minimap button")
+H.eq(mm.ctl.on, true, "the minimap box starts on")
+mm.ctl:Click()
+H.eq(NS.db.minimap.hide, true, "clicking it hides the button")
+-- the side effect, not just the key: NS.ToggleMinimap also calls Minimap:Update,
+-- and a `set` that wrote db.minimap.hide by hand would leave the button on
+-- screen with the box saying otherwise
+H.eq(NS.Minimap.button:IsShown(), false, "and the button really went away")
+SlashCmdList["NEBBINATOR"]("minimap")
+H.eq(NS.db.minimap.hide, false, "/nb minimap shows it again")
+H.eq(NS.Minimap.button:IsShown(), true, "and it really came back")
+
+NS.db.autoReply.enabled = false
+opt:Paint()
+local ar = optRow("auto-reply")
+ar.ctl:Click()
+H.eq(NS.db.autoReply.enabled, true, "auto-reply toggles from the window")
+SlashCmdList["NEBBINATOR"]("reply")
+H.eq(NS.db.autoReply.enabled, false, "and from the slash command")
+
+H.section("the stepper clamps, and the sound one plays what it lands on")
+NS.SetCooldown(10)
+opt:Paint()
+local cd = optRow("cooldown per channel")
+cd.ctl.plus:Click()
+H.eq(NS.db.sendCooldown, 15, "> raises the cooldown")
+for _ = 1, 40 do cd.ctl.plus:Click() end
+H.eq(NS.db.sendCooldown, 120, "and it clamps at the top")
+for _ = 1, 40 do cd.ctl.minus:Click() end
+H.eq(NS.db.sendCooldown, 5, "and at the bottom")
+NS.SetCooldown(10)
+
+local snd = optRow("which sound")
+NS.SetSoundIndex(2)
+H.sounds = {}
+snd.ctl.plus:Click()
+H.eq(NS.db.autoReply.sound, NS.SOUNDS[3].key, "> walks to the next sound")
+H.eq(#H.sounds, 1, "and plays it, so you hear what you landed on")
+for _ = 1, 40 do snd.ctl.plus:Click() end
+H.eq(NS.db.autoReply.sound, NS.SOUNDS[#NS.SOUNDS].key, "the sound stepper clamps at the end")
+for _ = 1, 40 do snd.ctl.minus:Click() end
+H.eq(NS.db.autoReply.sound, NS.SOUNDS[1].key, "and at the start")
+-- and the name it shows fits between the arrows, un-trimmed, for EVERY sound
+for i = 1, #NS.SOUNDS do
+    NS.SetSoundIndex(i)
+    opt:Paint()
+    local shown = tostring(snd.ctl.val:GetText())
+    H.ok(not shown:find("%.%.%.$"), "sound name fits whole: " .. shown)
+    H.ok(snd.ctl.val:GetStringWidth() <= O.STEP_V, "...between the arrows: " .. shown,
+         math.floor(snd.ctl.val:GetStringWidth()) .. " of " .. O.STEP_V)
+end
+NS.SetSoundIndex(2)
+
+H.section("the button row, and the ways in")
+local reset = optRow("reset window position")
+NS.db.window = { point = "TOPLEFT", x = 5, y = 5 }
+reset.ctl:Click()
+H.eq(NS.db.window.point, nil, "reset put the window back")
+
+H.ok(not opt:IsShown(), "still hidden")
+SlashCmdList["NEBBINATOR"]("config")
+H.ok(opt:IsShown(), "/nb config opens it")
+H.ok(UI.optBtn.marked, "and the header box lights while it is out")
+UI.optBtn:Click()
+H.ok(not opt:IsShown(), "the header box closes it again")
+
+H.section("what did not fit the four kinds went somewhere real")
+-- The law: a setting that is not a toggle, seg, step or button is a slash
+-- command, not a fifth control kind.
+for _, r in ipairs(opt.rows) do
+    if r.opt then
+        H.ok(BiSTheme.OptionKinds[r.opt.kind] ~= nil,
+             "known kind: " .. tostring(r.opt.kind) .. " (" .. tostring(r.opt.label) .. ")")
+    end
+end
+SlashCmdList["NEBBINATOR"]("channels world, lookingforgroup")
+H.eq(NS.db.customChannels, "world, lookingforgroup", "/nb channels took the extra channels")
+H.ok(UI.logsBox ~= nil, "and the logs address is the box on the desk")
+NS.db.logsUrl = "https://x/{name}"
+UI:RefreshDesk()
+H.eq(UI.logsBox:Get(), "https://x/{name}", "which round-trips")
+
+H.section("chat stays clean when the window does the talking")
+local chatBefore = #H.prints
+prev.ctl:Click() prev.ctl:Click()
+mm.ctl:Click() mm.ctl:Click()
+cd.ctl.plus:Click() cd.ctl.minus:Click()
+snd.ctl.plus:Click() snd.ctl.minus:Click()
+H.eq(#H.prints, chatBefore, "not one line in chat from a round of clicks")
+-- but the slash command still answers in chat, because that is what a slash is
+SlashCmdList["NEBBINATOR"]("preview")
+H.ok(#H.prints > chatBefore, "/nb preview still answers in the chat frame")
+SlashCmdList["NEBBINATOR"]("preview")
 
 H.report()

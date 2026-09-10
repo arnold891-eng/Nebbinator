@@ -26,25 +26,30 @@ function MB:Initialize()
     b:RegisterForDrag("LeftButton")
     b:SetMovable(true)
 
-    local icon = b:CreateTexture(nil, "BACKGROUND")
-    icon:SetSize(20, 20)
+    -- A violet pad with a star on it. The pad is BACKGROUND and the star is
+    -- ARTWORK, in that order, because the old build had them the other way
+    -- round: a 24x24 solid square sitting ON TOP of the icon.
+    local pad = b:CreateTexture(nil, "BACKGROUND")
+    pad:SetSize(20, 20)
+    pad:SetPoint("CENTER", -1, 1)
+    pad:SetTexture("Interface\\Buttons\\WHITE8X8")
+    self.pad = pad
+
+    -- The star comes off the raid-target sheet, not Interface\Icons. Raid
+    -- markers are core UI art, so the file is in every client - the old
+    -- INV_Scroll_11 path evidently was not, and the button drew nothing at all.
+    -- The sheet is a 4x2 grid; the star is the top-left cell.
+    local icon = b:CreateTexture(nil, "ARTWORK")
+    icon:SetSize(17, 17)
     icon:SetPoint("CENTER", -1, 1)
-    icon:SetTexture("Interface\\Icons\\INV_Scroll_11")
-    icon:SetTexCoord(0.08, 0.92, 0.08, 0.92)
+    icon:SetTexture("Interface\\TargetingFrame\\UI-RaidTargetingIcons")
+    icon:SetTexCoord(0, 0.25, 0, 0.25)
+    self.icon = icon
 
     local border = b:CreateTexture(nil, "OVERLAY")
     border:SetSize(53, 53)
     border:SetPoint("TOPLEFT")
     border:SetTexture("Interface\\Minimap\\MiniMap-TrackingBorder")
-
-    -- a violet ring when somebody is waiting, so the button itself reports
-    local ring = b:CreateTexture(nil, "ARTWORK")
-    ring:SetSize(24, 24)
-    ring:SetPoint("CENTER", -1, 1)
-    ring:SetTexture("Interface\\Buttons\\WHITE8X8")
-    ring:SetVertexColor(NS.T.rgba("accent", 0.30))
-    ring:Hide()
-    self.ring = ring
 
     b:SetHighlightTexture("Interface\\Minimap\\UI-Minimap-ZoomButton-Highlight")
 
@@ -89,8 +94,19 @@ end
 function MB:Update()
     if not self.button then return end
     if NS.db.minimap.hide then self.button:Hide() else self.button:Show() end
-    if self.ring then
-        if NS.Responders:CountNew() > 0 then self.ring:Show() else self.ring:Hide() end
+
+    -- The button reports for itself: idle is a dim star on a quiet pad, waiting
+    -- is a full-bright star on accent. Same two textures either way, so there
+    -- is nothing that can cover the icon up.
+    if self.pad and self.icon then
+        if NS.Responders:CountNew() > 0 then
+            self.pad:SetVertexColor(NS.T.rgba("accent", 0.85))
+            self.icon:SetVertexColor(1, 1, 1)
+        else
+            self.pad:SetVertexColor(NS.T.rgba("accentSoft", 0.90))
+            self.icon:SetVertexColor(0.78, 0.74, 0.88)
+        end
     end
+
     Reposition(self.button)
 end

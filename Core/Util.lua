@@ -215,18 +215,29 @@ end
 
 -- Alert sounds. Each entry tries its file first, then the named sound kit,
 -- so it still works if one of the two is missing on this client.
+-- `short` is what the options stepper shows between its < and >: 48 px at 8 pt
+-- is about nine characters, and a name trimmed to "Raid wa..." tells you
+-- nothing. `name` is still the full one for tooltips and chat.
 NS.SOUNDS = {
-    { key = "none",     name = "No sound" },
-    { key = "bell",     name = "Bell toll",        file = "Sound\\Doodad\\BellTollAlliance.ogg" },
-    { key = "bell2",    name = "Bell, deeper",     file = "Sound\\Doodad\\BellTollNightElf.ogg" },
-    { key = "auction",  name = "Auction house",    kit = "AUCTION_WINDOW_OPEN", file = "Sound\\Interface\\AuctionWindowOpen.ogg" },
-    { key = "ping",     name = "Map ping",         kit = "MAP_PING",            file = "Sound\\Interface\\MapPing.ogg" },
-    { key = "queue",    name = "Queue pop",        kit = "PVP_THROUGH_QUEUE",   file = "Sound\\Interface\\PVPThroughQueue.ogg" },
-    { key = "levelup",  name = "Level up",         kit = "LEVELUP", file = "Sound\\Interface\\LevelUp.ogg" },
-    { key = "murloc",   name = "Murloc",           kit = "MURLOC_AGGRO" },
-    { key = "raidhorn", name = "Raid warning horn",kit = "RAID_WARNING",        file = "Sound\\Interface\\RaidWarning.ogg" },
-    { key = "whisper",  name = "Whisper ding",     kit = "TELL_MESSAGE",        file = "Sound\\Interface\\iTellMessage.ogg" },
+    { key = "none",     name = "No sound",          short = "none" },
+    { key = "bell",     name = "Bell toll",         short = "bell",     file = "Sound\\Doodad\\BellTollAlliance.ogg" },
+    { key = "bell2",    name = "Bell, deeper",      short = "bell 2",   file = "Sound\\Doodad\\BellTollNightElf.ogg" },
+    { key = "auction",  name = "Auction house",     short = "auction",  kit = "AUCTION_WINDOW_OPEN", file = "Sound\\Interface\\AuctionWindowOpen.ogg" },
+    { key = "ping",     name = "Map ping",          short = "ping",     kit = "MAP_PING",            file = "Sound\\Interface\\MapPing.ogg" },
+    { key = "queue",    name = "Queue pop",         short = "queue",    kit = "PVP_THROUGH_QUEUE",   file = "Sound\\Interface\\PVPThroughQueue.ogg" },
+    { key = "levelup",  name = "Level up",          short = "level up", kit = "LEVELUP", file = "Sound\\Interface\\LevelUp.ogg" },
+    { key = "murloc",   name = "Murloc",            short = "murloc",   kit = "MURLOC_AGGRO" },
+    { key = "raidhorn", name = "Raid warning horn", short = "horn",     kit = "RAID_WARNING",        file = "Sound\\Interface\\RaidWarning.ogg" },
+    { key = "whisper",  name = "Whisper ding",      short = "whisper",  kit = "TELL_MESSAGE",        file = "Sound\\Interface\\iTellMessage.ogg" },
 }
+
+--- The 1-based position of a sound key in the list, for the options stepper.
+function U.SoundIndex(key)
+    for i, sound in ipairs(NS.SOUNDS) do
+        if sound.key == key then return i end
+    end
+    return 2
+end
 
 function U.SoundByKey(key)
     for _, sound in ipairs(NS.SOUNDS) do

@@ -136,8 +136,29 @@ local function newFrame(ftype, name, parent)
     function fr:SetHeight(h) self._h = h end
     function fr:GetWidth() return self._w end
     function fr:GetHeight() return self._h end
-    function fr:GetTop() return 600 end
-    function fr:GetLeft() return 100 end
+    -- Enough anchor maths to catch a window that WALKS. These used to be flat
+    -- constants, so `Relayout` could drop the frame by its own height on every
+    -- call and no test could ever see it. A frame anchored to UIParent's
+    -- bottom-left really does know where its own top edge is; anything else
+    -- keeps the old constants.
+    local function anchorToUIParent(self)
+        for _, p in ipairs(self._points or {}) do
+            if p.rel == _G.UIParent and p.relPoint == "BOTTOMLEFT" then return p end
+        end
+    end
+    function fr:GetTop()
+        local p = anchorToUIParent(self)
+        if not p then return 600 end
+        if p.point == "TOPLEFT" or p.point == "TOPRIGHT" then return p.y end
+        if p.point == "BOTTOMLEFT" or p.point == "BOTTOMRIGHT" then return p.y + (self._h or 0) end
+        return 600
+    end
+    function fr:GetLeft()
+        local p = anchorToUIParent(self)
+        if not p then return 100 end
+        if p.point == "TOPLEFT" or p.point == "BOTTOMLEFT" then return p.x end
+        return 100
+    end
     function fr:GetEffectiveScale() return 1 end
     function fr:GetCenter() return 100, 100 end
     function fr:SetPoint(point, a, b, c, d)
@@ -384,6 +405,21 @@ local ALLOWED_GLOBALS = {
     -- shared, embedded, and global by design
     BiSTheme = true, LibBiSComm = true, SLASH_BISCOMM1 = true,
 }
+
+--- The TOC is the truth for what loads and in what order. Every suite reads it
+--- rather than keeping its own copy of the list: dev/theme.lua kept one, drifted,
+--- and was still loading UI/Pages/Responders.lua a day after the TOC dropped it -
+--- a suite testing an addon the client does not run. Same family as landmine 0c.
+function H.TOC(root, name)
+    local fh = assert(io.open(root .. "/" .. name, "r"))
+    local list = {}
+    for line in fh:lines() do
+        line = line:gsub("\r$", "")
+        if line ~= "" and not line:match("^#") then list[#list + 1] = (line:gsub("\\", "/")) end
+    end
+    fh:close()
+    return list
+end
 
 function H.Load(root, files)
     local before = {}

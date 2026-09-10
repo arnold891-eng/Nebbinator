@@ -2,10 +2,7 @@
 local HERE = (arg and arg[0] or ""):match("^(.*)[/\\]") or "."
 local H = dofile(HERE .. "/harness.lua")
 local ROOT = os.getenv("NEB") or (HERE .. "/..")
-local FILES = { "Libs/BiSTheme/Console.lua", "Libs/LibBiSComm-1.0/LibBiSComm-1.0.lua", "Core/Util.lua", "Core/Init.lua", "Core/Message.lua", "Core/Responders.lua",
-  "UI/Kit.lua", "UI/Window.lua", "UI/SendBar.lua", "UI/Pages/Responders.lua",
-  "UI/Pages/Recruit.lua", "UI/Pages/Message.lua", "UI/Pages/Replies.lua",
-  "UI/Pages/Settings.lua", "UI/Pages/About.lua", "UI/Minimap.lua" }
+local FILES = H.TOC(ROOT, "Nebbinator.toc")
 
 H.section("without BiSTheme installed")
 local NS = H.Load(ROOT, FILES)

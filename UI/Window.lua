@@ -27,13 +27,13 @@ UI.W         = 820          -- pages are laid out for the wide state, always
 UI.H         = 660
 UI.HEADER    = 16   -- K.HEADER, the house bar
 UI.SIDEBAR   = 168
-UI.STRIP     = 29   -- header buttons: x(12) at -3, list(12) at -17 -> strip owns -3..-29
+UI.STRIP     = 43   -- header buttons: x(12) at -3, =(12) at -17, o(12) at -31 -> -3..-43
 UI.ROW       = 30
 UI.controls  = {}
 UI.actions   = {}
 UI.pages     = {}
 UI.tabs      = {}
-UI.PAGES     = { "Recruit", "Message", "Replies", "Settings", "About" }
+UI.PAGES     = { "Recruit", "Message", "Replies", "About" }
 
 function UI.colW(page)
     return (page and page.colW) or (UI.W - UI.SIDEBAR - 56)
@@ -316,6 +316,7 @@ function UI:Refresh()
     if self.RefreshQuick then self:RefreshQuick() end
     if self.RefreshMessageHints then self:RefreshMessageHints() end
     if self.RefreshAbout then self:RefreshAbout() end
+    if self.RefreshOptions then self:RefreshOptions() end
 end
 
 -- Data changed underneath us (a whisper landed, a /who came back). Cheap
@@ -411,13 +412,20 @@ function UI:Relayout()
 
     if self.bookBtn then self.bookBtn:SetMarked(self.bookOpen) end
 
-    -- grow downward from wherever the window was put, never off the screen
+    -- Grow downward from wherever the window was put: pin the top-left corner
+    -- where it already was and let the height run down from it.
+    --
+    -- `SetPoint("TOPLEFT", UIParent, "BOTTOMLEFT", left, y)` puts the frame's
+    -- TOP edge at y. This said `top - height`, which dropped the window by its
+    -- own height on EVERY relayout - Arn saw it as "every time I right click to
+    -- pin or unpin it shifts the window down", but a whisper landing did it too.
     local top, left = self.frame:GetTop(), self.frame:GetLeft()
     self.frame:SetWidth(width)
     self.frame:SetHeight(height)
     if top and left then
         self.frame:ClearAllPoints()
-        self.frame:SetPoint("TOPLEFT", UIParent, "BOTTOMLEFT", left, top - height)
+        self.frame:SetPoint("TOPLEFT", UIParent, "BOTTOMLEFT", left, top)
+        NS.db.window = { point = "TOPLEFT", relPoint = "BOTTOMLEFT", x = left, y = top }
     end
 end
 
@@ -436,7 +444,8 @@ function UI:BuildHeader(f)
     -- Header budget, left to right: 4 + prompt, width DESK_W - STRIP - 8 = 583 px
     -- ("BiS> " plus ~120 characters at 8 pt, so the words never reach the boxes)
     -- and the window is only ever wider than that. From the right: x(12) at -3,
-    -- =(12) at -17, so the strip owns -3..-29. Nothing else goes in this bar.
+    -- =(12) at -17, o(12) at -31, so the strip owns -3..-43. Nothing else goes
+    -- in this bar.
     -- No logo -- "BiS>" is the brand. No version -- that is on the About page.
     -- No preview pill and no new-responder badge -- both were state, and state
     -- belongs in the prompt's slots.
@@ -450,8 +459,14 @@ function UI:BuildHeader(f)
         "/nb brings it back.", function() UI:Hide() end, "warn")
 
     self.bookBtn = K.HeaderButton(head, -17, "=", "The rest of it",
-        "Needs, raid times, templates, replies, settings. Rolls back up when you are done.",
+        "Needs, raid times, templates and replies. Rolls back up when you are done.",
         function() UI:ToggleBook() end)
+
+    -- Settings used to be a tab in the book. It is its own window now, the same
+    -- one every BiS addon wears -- see UI/Options.lua.
+    self.optBtn = K.HeaderButton(head, -31, "o", "Options",
+        "Sounds, cooldown, auto-reply, the minimap button. Also /nb config.",
+        function() UI:ToggleOptions() end)
 
     -- the header is the drag handle
     head:EnableMouse(true)
