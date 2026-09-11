@@ -1,5 +1,10 @@
 # Nebbinator
 
+## 3.3.1 - 11 Sep 2026
+
+- Shared console minor 4: the blinking cursor in the `BiS>` header is its own text now, so
+  the words beside it no longer shift a hair every half second.
+
 ## 3.3.0 - 10 Sep 2026
 
 The Settings tab is gone. Settings live in the window every BiS addon wears.
