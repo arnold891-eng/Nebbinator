@@ -4,7 +4,9 @@ Not an addon — no `.toc`, so the client ignores this folder.
 
     cd Interface/AddOns/Nebbinator
     lua5.1 dev/tests.lua          # the whole window, headless
-    lua5.1 dev/theme.lua          # palette, with and without BiSTheme
+    lua5.1 dev/options.lua        # the shared options kit on its own
+    lua5.1 dev/theme.lua          # palette, with and without BiSTheme (expects ../BiSTheme)
+    .\dev\release.ps1 -ZipOnly    # the zip; refuses if an embedded lib drifted from canon
     lua5.1 ../_bisdev/bislint.lua Core/*.lua UI/*.lua UI/Pages/*.lua
 
 `NEB=/some/other/copy lua5.1 dev/tests.lua` runs the suite against a scratch

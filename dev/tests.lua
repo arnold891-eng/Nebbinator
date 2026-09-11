@@ -510,7 +510,7 @@ UI:ShowTab("Responders")
 H.section("LibBiSComm is embedded, booted, and never gated by a feature")
 local lib = _G.LibBiSComm
 H.ok(lib ~= nil, "the lib loaded from Libs/")
-H.eq(lib and lib.MINOR, 3, "minor 3, the current one")
+H.eq(lib and lib.MINOR, 5, "minor 5, the current one (bystander CONFIRM_SUMMON ignored)")
 H.ok(lib and lib._booted, "booted from Core/Init, not lazily")
 -- the stub answers GetAddOnMetadata with "test": if this ever reads a literal
 -- like "2.0.1" the version has been hardcoded again and drifted from the TOC
@@ -896,5 +896,34 @@ H.eq(#H.prints, chatBefore, "not one line in chat from a round of clicks")
 SlashCmdList["NEBBINATOR"]("preview")
 H.ok(#H.prints > chatBefore, "/nb preview still answers in the chat frame")
 SlashCmdList["NEBBINATOR"]("preview")
+
+H.section("embedded libs are the canonical bytes")
+-- The lib is edited in _bisdev (Console in BiSTheme) and copied out by
+-- _bisdev/sync.ps1; a stale copy in an addon is how three addons kept shipping
+-- minor 4 after minor 5 fixed the phantom summon. Run from the addon folder, the
+-- siblings are one level up; when they are not (a bare checkout) the check says
+-- so and skips instead of lying green. Options.lua joins this list when its
+-- OPTIONS_MINOR assert in dev/options.lua moves to 2 (task 2 on the Bench).
+do
+    local function bytes(path)
+        local fh = io.open(path, "rb")
+        if not fh then return nil end
+        local b = fh:read("*a") fh:close()
+        return b
+    end
+    local canon = {
+        { "Libs/LibBiSComm-1.0/LibBiSComm-1.0.lua", "../_bisdev/LibBiSComm-1.0/LibBiSComm-1.0.lua" },
+        { "Libs/BiSTheme/Console.lua",              "../BiSTheme/Console.lua" },
+    }
+    for _, pr in ipairs(canon) do
+        local mine, ref = bytes(pr[1]), bytes(pr[2])
+        H.ok(mine ~= nil, "embedded " .. pr[1] .. " is on disk")
+        if ref then
+            H.ok(mine == ref, "embedded " .. pr[1] .. " is byte-identical to " .. pr[2] .. " (run _bisdev/sync.ps1)")
+        else
+            H.say("   (canonical " .. pr[2] .. " not beside this checkout - embed check skipped)")
+        end
+    end
+end
 
 H.report()
