@@ -902,8 +902,7 @@ H.section("embedded libs are the canonical bytes")
 -- _bisdev/sync.ps1; a stale copy in an addon is how three addons kept shipping
 -- minor 4 after minor 5 fixed the phantom summon. Run from the addon folder, the
 -- siblings are one level up; when they are not (a bare checkout) the check says
--- so and skips instead of lying green. Options.lua joins this list when its
--- OPTIONS_MINOR assert in dev/options.lua moves to 2 (task 2 on the Bench).
+-- so and skips instead of lying green. Options.lua joined 11 Sep pm (minor 2).
 do
     local function bytes(path)
         local fh = io.open(path, "rb")
@@ -914,6 +913,7 @@ do
     local canon = {
         { "Libs/LibBiSComm-1.0/LibBiSComm-1.0.lua", "../_bisdev/LibBiSComm-1.0/LibBiSComm-1.0.lua" },
         { "Libs/BiSTheme/Console.lua",              "../BiSTheme/Console.lua" },
+        { "Libs/BiSTheme/Options.lua",              "../BiSTheme/Options.lua" },
     }
     for _, pr in ipairs(canon) do
         local mine, ref = bytes(pr[1]), bytes(pr[2])
