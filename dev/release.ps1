@@ -27,7 +27,7 @@ param(
 
 $ErrorActionPreference = "Stop"
 
-$ProjectId = 0                # <-- no CurseForge project yet (11 Sep 2026): -ZipOnly until there is one
+$ProjectId = 1683356          # CurseForge, unlisted (Arn, 11 Sep 2026) - guild link only
 $AddonName = "Nebbinator"
 $Root      = Split-Path -Parent (Split-Path -Parent $MyInvocation.MyCommand.Path)   # ..\Nebbinator
 $Downloads = Join-Path $env:USERPROFILE "Downloads"
