@@ -15,7 +15,12 @@ local fr, fg, fb, fa = NS.Kit.shade("frame")
 H.ok(math.abs(fr - 0x0d/255) < 0.01 and fa == 1, "the layered near-blacks come from the local table")
 
 H.section("with BiSTheme installed and loading AFTER us")
-dofile("/mnt/user-data/uploads/BiSTheme/BiSTheme.lua")
+-- the real addon, one folder up in the AddOns tree (BISTHEME= points elsewhere).
+-- This was a hardcoded cloud upload path until 11 Sep 2026 - the suite could
+-- only ever run in the sandbox that happened to have it, and read as passing.
+local THEME = os.getenv("BISTHEME") or (ROOT .. "/../BiSTheme/BiSTheme.lua")
+H.ok(io.open(THEME, "rb") ~= nil, "BiSTheme.lua is beside this checkout", THEME)
+dofile(THEME)
 local r2 = NS.T.rgb("accent")
 H.ok(math.abs(r2 - 0xb9/255) < 0.01, "still b980ff, now from the shared addon")
 _G.BiSTheme.hex.accent = "112233"
