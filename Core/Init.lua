@@ -8,7 +8,8 @@ _G.Nebbinator = NS
 NS.ADDON_NAME    = ADDON
 -- One version, in the TOC. Keeping the number in two places is how the header
 -- spent v3 announcing itself as 2.0.1.
-NS.VERSION       = (GetAddOnMetadata and GetAddOnMetadata(ADDON, "Version")) or "dev"
+NS.VERSION       = (C_AddOns and C_AddOns.GetAddOnMetadata and C_AddOns.GetAddOnMetadata(ADDON, "Version"))
+                   or (GetAddOnMetadata and GetAddOnMetadata(ADDON, "Version")) or "dev"
 NS.DB_VERSION    = 3
 NS.CHAT_LIMIT    = 255
 
