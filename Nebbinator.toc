@@ -2,7 +2,7 @@
 ## Title: |cffb980ffBiS|r Nebbinator
 ## Notes: Guild recruitment in one window: build the ad, post it, and work everyone who whispers back.
 ## Author: Arn
-## Version: 3.3.1
+## Version: 3.3.2
 ## OptionalDeps: BiSTheme
 ## SavedVariables: NebbinatorDB, NubbinatorDB
 ## DefaultState: enabled
