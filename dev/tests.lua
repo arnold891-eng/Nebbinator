@@ -897,6 +897,89 @@ SlashCmdList["NEBBINATOR"]("preview")
 H.ok(#H.prints > chatBefore, "/nb preview still answers in the chat frame")
 SlashCmdList["NEBBINATOR"]("preview")
 
+H.section("every label fits its window")
+-- (6 Oct 2026) Arn: "a check for cut offs or overflows that happens often".
+-- H.fitsIn (harness) measures every shown label where it really starts and
+-- wants it to end inside the window. Run over every window this suite drives,
+-- empty, full, and with the longest real names it uses. Forever names carry a
+-- surname ("Kumlust Surname", solved.md) and no realm, so the queue gets one.
+do
+    local LONG = "Kumlanceroo Wildhammer"
+    local frame = UI.frame
+    UI:Open()
+    UI:ToggleBook(false)
+    UI:Serve(nil)
+    UI.filter = "all"
+    NS.db.responders = {}
+    NS.db.autoReply.enabled = false
+    UI:LayoutDesk()
+    H.fitsIn(frame, "the desk, empty")
+
+    UI.filter = "declined"
+    NS.db.responders.Dps1 = { name = "Dps1", status = "new", timestamp = os.time(), messages = {} }
+    UI:LayoutDesk()
+    H.fitsIn(frame, "the desk, a filter with nobody in it")
+    UI.filter = "all"
+
+    NS.db.autoReply.enabled = true
+    R:OnWhisper("recruiting? i am a resto shaman with kara gear and logs", LONG,
+        nil, nil, nil, nil, nil, nil, nil, nil, nil, "Player-1-2")
+    local e = NS.db.responders[LONG]
+    e.level, e.className, e.guild = 70, "Shaman", "Some Very Long Guild Name"
+    NS.db.responders.Leadlady = { name = "Leadlady", status = "contacted", source = "channel",
+        level = 70, className = "Warlock", guild = "Some Very Long Guild Name",
+        timestamp = os.time() - 7200, messages = { { text = "LF guild", at = os.time() } } }
+    UI:LayoutDesk()
+    H.fitsIn(frame, "the desk, a long Forever name in the queue")
+
+    UI:Serve(LONG)
+    H.fitsIn(frame, "the desk, serving the long name")
+
+    -- every send button with its clock running
+    NS.db.previewMode = false
+    H.clock = H.clock + 999
+    for _, b in ipairs(UI.send.buttons) do if b.chatType then b:Click() end end
+    UI:UpdateSendTimers()
+    H.fitsIn(frame, "the desk, every send clock counting down")
+
+    UI:Clear() step(7)
+    UI:Log(LONG .. " whispered", "gold")
+    await(LONG .. " whispered", 2)
+    H.fitsIn(frame, "the header with an event up")
+
+    UI:ToggleBook(true)
+    for _, name in ipairs(UI.PAGES) do
+        UI:ShowTab(name)
+        H.fitsIn(frame, "the book: " .. name)
+    end
+    -- the Message page's warning only shows when the ad has no {guild}
+    UI:ShowTab("Message")
+    NS.db.templates[NS.db.activeTemplate].text = "{pre} - {needs} - {times} - {post}"
+    UI:Refresh()
+    H.fitsIn(frame, "the book: Message, warning up")
+    UI:ToggleBook(false)
+
+    UI.served.logs:Click()
+    H.fitsIn(NS.Kit.copyBox, "the copy box")
+    NS.Kit.copyBox:Hide()
+
+    UI:ToggleOptions(true)
+    for i = 1, #NS.SOUNDS do
+        NS.SetSoundIndex(i)
+        opt:Paint()
+        H.fitsIn(opt, "the options window, sound " .. i)
+    end
+    NS.SetSoundIndex(2)
+    UI:ToggleOptions(false)
+
+    UI:Serve(nil)
+    NS.db.responders = {}
+    UI:LayoutDesk()
+    if os.getenv("FIT") then
+        for _, f in ipairs(H.fitLog) do H.say(("   fit: %-45s %d labels"):format(f.what, f.measured)) end
+    end
+end
+
 H.section("embedded libs are the canonical bytes")
 -- The lib is edited in _bisdev (Console in BiSTheme) and copied out by
 -- _bisdev/sync.ps1; a stale copy in an addon is how three addons kept shipping
