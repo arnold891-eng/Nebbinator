@@ -1,9 +1,12 @@
 # Nebbinator
 
+## Unreleased
+
+- Queue name column 110 -> 150 px: a Forever name with its surname ("Kumlanceroo Wildhammer") no longer gets cut.
+
 ## 3.3.2 - 16 Sep 2026
 
 - LibBiSComm minor 6: summon API moved to C_SummonInfo on 2.5.6 — the phantom-summon filter works again.
-- Queue name column 110 -> 150 px: a Forever name with its surname ("Kumlanceroo Wildhammer") no longer gets cut.
 
 ## 3.3.1 - 11 Sep 2026
 
