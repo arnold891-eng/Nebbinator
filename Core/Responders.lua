@@ -32,7 +32,10 @@ function R:Initialize()
         elseif event == "CHAT_MSG_SYSTEM" then
             R:OnSystemMessage(...)
         elseif event == "GUILD_ROSTER_UPDATE" then
-            R:RefreshGuildRoster()
+            -- READ WHEN ASKED, NOT WHEN PINGED (7 Oct 2026, the cost pass). This fires whenever any
+            -- addon or the guild pane asks for the roster and whenever anyone logs on or off - a
+            -- 500-member walk each time. The one reader is the auto-reply, once per whisper.
+            R.rosterDirty = true
         end
     end)
 
@@ -58,6 +61,10 @@ function R:RefreshGuildRoster()
 end
 
 function R:IsGuildMember(name)
+    if self.rosterDirty then
+        self.rosterDirty = nil
+        self:RefreshGuildRoster()
+    end
     return self.guildRoster[name:lower()] == true
 end
 
