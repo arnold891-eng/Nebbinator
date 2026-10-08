@@ -510,7 +510,7 @@ UI:ShowTab("Responders")
 H.section("LibBiSComm is embedded, booted, and never gated by a feature")
 local lib = _G.LibBiSComm
 H.ok(lib ~= nil, "the lib loaded from Libs/")
-H.eq(lib and lib.MINOR, 7, "minor 7, the current one (a secret on the wire is dropped)")
+H.eq(lib and lib.MINOR, 9, "minor 9, the current one (an outbox that keeps to the client's pace)")
 H.ok(lib and lib._booted, "booted from Core/Init, not lazily")
 -- the stub answers GetAddOnMetadata with "test": if this ever reads a literal
 -- like "2.0.1" the version has been hardcoded again and drifted from the TOC
@@ -897,6 +897,89 @@ SlashCmdList["NEBBINATOR"]("preview")
 H.ok(#H.prints > chatBefore, "/nb preview still answers in the chat frame")
 SlashCmdList["NEBBINATOR"]("preview")
 
+H.section("every label fits its window")
+-- (6 Oct 2026) Arn: "a check for cut offs or overflows that happens often".
+-- H.fitsIn (harness) measures every shown label where it really starts and
+-- wants it to end inside the window. Run over every window this suite drives,
+-- empty, full, and with the longest real names it uses. Forever names carry a
+-- surname ("Kumlust Surname", solved.md) and no realm, so the queue gets one.
+do
+    local LONG = "Kumlanceroo Wildhammer"
+    local frame = UI.frame
+    UI:Open()
+    UI:ToggleBook(false)
+    UI:Serve(nil)
+    UI.filter = "all"
+    NS.db.responders = {}
+    NS.db.autoReply.enabled = false
+    UI:LayoutDesk()
+    H.fitsIn(frame, "the desk, empty")
+
+    UI.filter = "declined"
+    NS.db.responders.Dps1 = { name = "Dps1", status = "new", timestamp = os.time(), messages = {} }
+    UI:LayoutDesk()
+    H.fitsIn(frame, "the desk, a filter with nobody in it")
+    UI.filter = "all"
+
+    NS.db.autoReply.enabled = true
+    R:OnWhisper("recruiting? i am a resto shaman with kara gear and logs", LONG,
+        nil, nil, nil, nil, nil, nil, nil, nil, nil, "Player-1-2")
+    local e = NS.db.responders[LONG]
+    e.level, e.className, e.guild = 70, "Shaman", "Some Very Long Guild Name"
+    NS.db.responders.Leadlady = { name = "Leadlady", status = "contacted", source = "channel",
+        level = 70, className = "Warlock", guild = "Some Very Long Guild Name",
+        timestamp = os.time() - 7200, messages = { { text = "LF guild", at = os.time() } } }
+    UI:LayoutDesk()
+    H.fitsIn(frame, "the desk, a long Forever name in the queue")
+
+    UI:Serve(LONG)
+    H.fitsIn(frame, "the desk, serving the long name")
+
+    -- every send button with its clock running
+    NS.db.previewMode = false
+    H.clock = H.clock + 999
+    for _, b in ipairs(UI.send.buttons) do if b.chatType then b:Click() end end
+    UI:UpdateSendTimers()
+    H.fitsIn(frame, "the desk, every send clock counting down")
+
+    UI:Clear() step(7)
+    UI:Log(LONG .. " whispered", "gold")
+    await(LONG .. " whispered", 2)
+    H.fitsIn(frame, "the header with an event up")
+
+    UI:ToggleBook(true)
+    for _, name in ipairs(UI.PAGES) do
+        UI:ShowTab(name)
+        H.fitsIn(frame, "the book: " .. name)
+    end
+    -- the Message page's warning only shows when the ad has no {guild}
+    UI:ShowTab("Message")
+    NS.db.templates[NS.db.activeTemplate].text = "{pre} - {needs} - {times} - {post}"
+    UI:Refresh()
+    H.fitsIn(frame, "the book: Message, warning up")
+    UI:ToggleBook(false)
+
+    UI.served.logs:Click()
+    H.fitsIn(NS.Kit.copyBox, "the copy box")
+    NS.Kit.copyBox:Hide()
+
+    UI:ToggleOptions(true)
+    for i = 1, #NS.SOUNDS do
+        NS.SetSoundIndex(i)
+        opt:Paint()
+        H.fitsIn(opt, "the options window, sound " .. i)
+    end
+    NS.SetSoundIndex(2)
+    UI:ToggleOptions(false)
+
+    UI:Serve(nil)
+    NS.db.responders = {}
+    UI:LayoutDesk()
+    if os.getenv("FIT") then
+        for _, f in ipairs(H.fitLog) do H.say(("   fit: %-45s %d labels"):format(f.what, f.measured)) end
+    end
+end
+
 H.section("embedded libs are the canonical bytes")
 -- The lib is edited in _bisdev (Console in BiSTheme) and copied out by
 -- _bisdev/sync.ps1; a stale copy in an addon is how three addons kept shipping
@@ -924,6 +1007,47 @@ do
             H.say("   (canonical " .. pr[2] .. " not beside this checkout - embed check skipped)")
         end
     end
+end
+
+-- WHAT A SECOND COSTS, IN CLIENT CALLS (7 Oct 2026). BiSHealing asked the client ~630,000 things
+-- a second and every suite was green; Arn: "make sure stuff like this does not happen". The one
+-- thing here that runs all session is the send ticker. With the window CLOSED it should do
+-- nothing at all; it used to walk every responder and repaint the prompt 4 times a second.
+do
+    local Cost = dofile("../_bisdev/dev/cost.lua")
+    local tk = UI.sendTicker
+    H.ok(tk ~= nil, "(cost) the send ticker is running")
+    local function second() for _ = 1, 60 do H.clock = H.clock + 1 / 60 tk:Fire("OnUpdate", 1 / 60) end end
+    local wasShown = UI.frame:IsShown()
+    UI.frame:Show()
+    local open, oby = Cost.Count(second)
+    UI.frame:Hide()
+    local closed, cby = Cost.Count(second)
+    if wasShown then UI.frame:Show() end
+    H.say(("   cost: send ticker, 1 s = %d calls open, %d closed"):format(open, closed))
+    H.ok(closed == 0, "a closed window's ticker asks the client nothing: " .. closed, Cost.Top(cby, 4))
+    H.ok(open <= 80, "an open window's second asks at most 80 things: " .. open, Cost.Top(oby, 4))
+
+    -- THE GUILD ROSTER IS READ WHEN ASKED. GUILD_ROSTER_UPDATE fires whenever anyone logs on or
+    -- off or any addon asks; a 500-member guild walked 500 rows each time. Fifty pings, no walk -
+    -- then the auto-reply asks once and gets a fresh answer.
+    local R = NS.Responders
+    local realN, realInfo = _G.GetNumGuildMembers, _G.GetGuildRosterInfo
+    local roster = {}
+    for i = 1, 500 do roster[i] = "Member" .. i end
+    _G.GetNumGuildMembers = function() return #roster end
+    _G.GetGuildRosterInfo = function(i) return roster[i] end
+    local pinged = Cost.Count(function()
+        for _ = 1, 50 do R.frame:Fire("OnEvent", "GUILD_ROSTER_UPDATE") end
+    end)
+    H.ok(pinged == 0, "fifty roster pings read the roster zero times: " .. pinged)
+    roster[501] = "Newbie-Realm"
+    local asked = Cost.Count(function()
+        H.ok(R:IsGuildMember("newbie"), "a member who joined during the pings is known when asked")
+        H.ok(not R:IsGuildMember("stranger"), "and a stranger is not")
+    end)
+    H.ok(asked <= 510, "and asking reads it once, not once per ping: " .. asked)
+    _G.GetNumGuildMembers, _G.GetGuildRosterInfo = realN, realInfo
 end
 
 H.report()

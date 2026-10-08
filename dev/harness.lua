@@ -26,11 +26,33 @@ local function autoMethods(t)
     end })
 end
 
-local function newTexture()
-    local t = { _shown = true }
-    function t:SetAllPoints() end
-    function t:SetPoint() end
-    function t:ClearAllPoints() end
+-- ONE ANCHOR PER POINT, LIKE THE CLIENT (6 Oct 2026). SetPoint on a point the
+-- region already has MOVES that point; it does not add a second one. The mock
+-- used to append, so a region re-pinned on every paint (a slider thumb, a
+-- scroll thumb) kept every place it ever was and OffsetFor answered the first.
+-- The number form (SetPoint("LEFT", 8, 0)) is relative to the parent.
+local function setPoint(self, point, a, b, c, d)
+    self._points = self._points or {}
+    local p
+    if type(a) == "table" then
+        p = { point = point, rel = a, relPoint = b or point, x = c or 0, y = d or 0 }
+    else
+        p = { point = point, rel = self._parent, relPoint = point, x = a or 0, y = b or 0 }
+    end
+    for i, old in ipairs(self._points) do
+        if old.point == point then self._points[i] = p return end
+    end
+    table.insert(self._points, p)
+end
+
+-- Size and anchor are REMEMBERED (6 Oct 2026): a label pinned beside an icon
+-- starts where the icon ends, and H.fitsIn cannot know that if the icon forgot
+-- both. SetAllPoints keeps what it covers.
+local function newTexture(owner)
+    local t = { _shown = true, _parent = owner }
+    function t:SetAllPoints(rel) self._all = rel or self._parent end
+    t.SetPoint = setPoint
+    function t:ClearAllPoints() self._points = {} self._all = nil end
     function t:SetWidth(w) self._w = w end
     function t:SetHeight(h) self._h = h end
     function t:SetSize(w, h) self._w, self._h = w, h end
@@ -59,18 +81,16 @@ local function newTexture()
     return autoMethods(t)
 end
 
+-- EVERY LABEL, KEPT, WITH WHAT IT IS PINNED TO (6 Oct 2026, ported from
+-- BiSTools). H.fitsIn walks this list.
+H.labels = {}
+
 local function newFontString(owner)
-    local f = { _text = "", _shown = true, _alpha = 1, _size = 9, _parent = owner }
+    local f = { _text = "", _shown = true, _alpha = 1, _size = 9, _parent = owner, _isLabel = true }
+    H.labels[#H.labels + 1] = f
     function f:SetText(v) self._text = tostring(v or "") end
     function f:GetText() return self._text end
-    function f:SetPoint(point, a, b, c, d)
-        self._points = self._points or {}
-        if type(a) == "table" then
-            table.insert(self._points, { point = point, rel = a, relPoint = b, x = c or 0, y = d or 0 })
-        else
-            table.insert(self._points, { point = point, rel = nil, relPoint = point, x = a or 0, y = b or 0 })
-        end
-    end
+    f.SetPoint = setPoint
     function f:OffsetFor(point)
         for _, p in ipairs(self._points or {}) do
             if p.point == point then return p.x, p.y end
@@ -80,7 +100,7 @@ local function newFontString(owner)
     function f:SetWidth(w) self._w = w end
     function f:SetHeight(h) self._h = h end
     function f:SetJustifyH() end
-    function f:SetWordWrap() end
+    function f:SetWordWrap(v) self._wrap = v and true or false end
     function f:SetAlpha(a) self._alpha = a end
     function f:GetAlpha() return self._alpha end
     function f:GetParent() return self._parent end
@@ -108,7 +128,6 @@ local function newFontString(owner)
     end
     function f:GetFont() return self._font, self._size end
     function f:SetFontObject(o) self._fontObject = o; self._font = self._font or "Fonts\\FRIZQT__.TTF" end
-    function f:SetWordWrap() end
     function f:Show() self._shown = true end
     function f:Hide() self._shown = false end
     function f:IsShown() return self._shown end
@@ -131,8 +150,10 @@ local function newFrame(ftype, name, parent)
 
     function fr:GetName() return self._name end
     function fr:GetParent() return self._parent end
-    function fr:SetSize(w, h) self._w, self._h = w, h end
-    function fr:SetWidth(w) self._w = w end
+    -- _w starts at 200 so GetWidth never answers nil; _wSet says the addon
+    -- really gave it a width, which is the only width H.fitsIn will trust
+    function fr:SetSize(w, h) self._w, self._h, self._wSet = w, h, true end
+    function fr:SetWidth(w) self._w, self._wSet = w, true end
     function fr:SetHeight(h) self._h = h end
     function fr:GetWidth() return self._w end
     function fr:GetHeight() return self._h end
@@ -161,22 +182,15 @@ local function newFrame(ftype, name, parent)
     end
     function fr:GetEffectiveScale() return 1 end
     function fr:GetCenter() return 100, 100 end
-    function fr:SetPoint(point, a, b, c, d)
-        self._points = self._points or {}
-        if type(a) == "table" then
-            table.insert(self._points, { point = point, rel = a, relPoint = b, x = c or 0, y = d or 0 })
-        else
-            table.insert(self._points, { point = point, rel = self._parent, relPoint = point, x = a or 0, y = b or 0 })
-        end
-    end
+    fr.SetPoint = setPoint
     function fr:GetPoints() return self._points or {} end
     function fr:OffsetFor(point)
         for _, p in ipairs(self._points or {}) do
             if p.point == point then return p.x, p.y end
         end
     end
-    function fr:ClearAllPoints() self._points = {} end
-    function fr:SetAllPoints() end
+    function fr:ClearAllPoints() self._points = {} self._all = nil end
+    function fr:SetAllPoints(rel) self._all = rel or self._parent end
     function fr:GetPoint() return "CENTER", nil, "CENTER", 0, 0 end
     function fr:GetNumPoints() return 1 end
     function fr:Show() self._shown = true end
@@ -191,7 +205,7 @@ local function newFrame(ftype, name, parent)
         end
         return true
     end
-    function fr:CreateTexture() local t = newTexture(); self._regions = self._regions or {}; table.insert(self._regions, t); return t end
+    function fr:CreateTexture() local t = newTexture(self); self._regions = self._regions or {}; table.insert(self._regions, t); return t end
     function fr:CreateFontString() local f = newFontString(self); self._regions = self._regions or {}; table.insert(self._regions, f); return f end
     function fr:SetScript(k, fn) self._scripts[k] = fn end
     function fr:GetScript(k) return self._scripts[k] end
@@ -466,6 +480,127 @@ function H.isColor(recorded, r, g, b, label)
         and math.abs(recorded[2] - g) < 0.01
         and math.abs(recorded[3] - b) < 0.01
     H.ok(near, label, ("painted %.3f,%.3f,%.3f"):format(recorded[1], recorded[2], recorded[3]))
+end
+
+--------------------------------------------------------------------
+-- does every label FIT its window (6 Oct 2026, ported from BiSTools)
+--
+-- Arn: "a check for cut offs or overflows that happens often". Every shown
+-- label inside a window is measured where it really starts - following what it
+-- is pinned to: the window's edge, a frame, a texture, another label - and must
+-- end inside the window.
+--
+-- WIDTH, CALIBRATED ON THE CLIENT, NOT GUESSED: capitals and digits 0.75 px per
+-- point ("NEED MATS", BiSCraft, 11 Sep), lowercase 0.55, spaces and punctuation
+-- 0.3 (Arn's BiSTools screenshot, 6 Oct). Inline |T..:w:h|t textures take their
+-- width, colour escapes none. The mock's own GetStringWidth (0.6 flat) stays as
+-- it is: the addon's code trims and sizes by it, and changing it changes what
+-- the addon draws.
+--
+-- A label pinned BOTH left and right, or given a width, is a box: its text must
+-- fit the box (the client cuts it with "..." otherwise - a cut-off all the
+-- same), and the box must fit the window. Only a box the code ALSO set to word
+-- wrap is let off the text measure: that text goes down, not across.
+--
+-- A frame is followed by its own anchors and width. One that cannot be followed
+-- (no width set, one anchor) counts as spanning the window, as BiSTools does.
+--------------------------------------------------------------------
+
+function H.realWidth(fs)
+    local t, tex = tostring(fs._text or ""), 0
+    t = t:gsub("|T[^|]-:(%d+):%d+[^|]*|t", function(w) tex = tex + tonumber(w) return "" end)
+    t = t:gsub("|c%x%x%x%x%x%x%x%x", ""):gsub("|r", "")
+    local size, widest = fs._size or 9, 0
+    -- a newline really breaks the line: the widest line is the width
+    for line in (t .. "\n"):gmatch("([^\n]*)\n") do
+        local px = 0
+        for ch in line:gmatch(".") do
+            if ch:match("[%u%d]") then px = px + 0.75 elseif ch:match("%l") then px = px + 0.55 else px = px + 0.3 end
+        end
+        if px > widest then widest = px end
+    end
+    return widest * size + tex
+end
+
+local function within(r, root)
+    local p = r._parent
+    while p do
+        if p == root then return true end
+        p = p._parent
+    end
+    return false
+end
+
+local function shownIn(r, root)
+    local p = r._parent
+    while p do
+        if p._shown == false then return false end
+        if p == root then return true end
+        p = p._parent
+    end
+    return false
+end
+
+local function ownWidth(r)
+    if r._isLabel then return r._w or H.realWidth(r) end
+    if r._type then return r._wSet and r._w or nil end
+    return r._w
+end
+
+-- left edge and width in px from the window's left edge; nil when the chain
+-- leaves the window or cannot be followed
+local function span(r, root, depth)
+    if r == root then return 0, root._w end
+    depth = depth or 0
+    if not r or depth > 16 or r == _G.UIParent then return nil end
+    if r._all then return span(r._all, root, depth + 1) end
+    local L, R, C
+    for _, p in ipairs(r._points or {}) do
+        local rel = p.rel or r._parent
+        local rl, rw = span(rel, root, depth + 1)
+        if not rl then
+            if rel and rel._type and within(rel, root) then rl, rw = 0, root._w else return nil end
+        end
+        local rp = p.relPoint or p.point
+        local ax = rp:find("LEFT") and rl or rp:find("RIGHT") and (rl + rw) or (rl + rw / 2)
+        ax = ax + (p.x or 0)
+        if p.point:find("LEFT") then L = ax elseif p.point:find("RIGHT") then R = ax else C = ax end
+    end
+    if L and R then return L, R - L, true end
+    local w = ownWidth(r)
+    if not w then return nil end
+    if L then return L, w elseif R then return R - w, w elseif C then return C - w / 2, w end
+    return nil
+end
+
+local function plainText(t) return (tostring(t):gsub("|c%x%x%x%x%x%x%x%x", ""):gsub("|r", "")) end
+
+H.fitLog = {}
+function H.fitsIn(root, what)
+    local width, bad, measured = root._w, {}, 0
+    for _, fs in ipairs(H.labels) do
+        if fs._shown ~= false and fs._text and fs._text ~= "" and shownIn(fs, root) then
+            local l, boxW, pinned = span(fs, root)
+            if l then
+                measured = measured + 1
+                local textW = H.realWidth(fs)
+                local boxed = pinned or fs._w ~= nil
+                local name = plainText(fs._text)
+                if boxed and not fs._wrap and textW > boxW + 1 then
+                    bad[#bad + 1] = ("%q needs %d px, its box is %d"):format(name, textW, boxW)
+                end
+                local right = l + (boxed and boxW or textW)
+                if l < -1 or right > width + 1 then
+                    bad[#bad + 1] = ("%q needs %d px from %d, the window is %d"):format(
+                        name, boxed and boxW or textW, l, width)
+                end
+            end
+        end
+    end
+    H.fitLog[#H.fitLog + 1] = { what = what, measured = measured }
+    H.ok(measured > 0, what .. ": the fit check measured something (a check that sees nothing proves nothing)")
+    H.ok(#bad == 0, what .. ": every label fits - " .. table.concat(bad, "; "))
+    return measured
 end
 
 function H.section(name) H.say("\n" .. name) end

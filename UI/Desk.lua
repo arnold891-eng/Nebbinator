@@ -199,12 +199,14 @@ function UI:AcquireRow(index)
     row.mark:SetColorTexture(K.shade("accent", 1))
     row.mark:Hide()
 
+    -- Forever names carry a surname. 110 px cut "Kumlanceroo Wildhammer" (122 px
+    -- at 10 pt, the fit check). 150 holds twelve letters plus twelve.
     row.name = K.fs(row, "", 10, "ink")
     row.name:SetPoint("LEFT", 8, 0)
-    row.name:SetWidth(110)
+    row.name:SetWidth(150)
 
     row.info = K.fs(row, "", 10, "ink2")
-    row.info:SetPoint("LEFT", 122, 0)
+    row.info:SetPoint("LEFT", 162, 0)
 
     row.remove = K.Button(row, "x", 14, 12, nil, "warn")
     row.remove:SetPoint("RIGHT", -4, 0)

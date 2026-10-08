@@ -174,9 +174,12 @@ function UI:StartSendTicker()
             blink = 0
             if UI.frame and UI.frame:IsShown() then UI:PaintConsole() end
         end
+        -- WINDOW OPEN ONLY, like the prompt above (7 Oct 2026, the cost pass). The clocks and the
+        -- standing slots are for eyes on the window; this ran 4 times a second from login to
+        -- logout - hidden, solo, in a raid - walking every responder and repainting the prompt.
         if clocks >= 0.25 then
             clocks = 0
-            UI:UpdateSendTimers()
+            if UI.frame and UI.frame:IsShown() then UI:UpdateSendTimers() end
         end
     end)
     self.sendTicker = ticker

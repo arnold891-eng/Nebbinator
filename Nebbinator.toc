@@ -1,5 +1,6 @@
 ## Interface: 20506, 16001
 ## Title: |cffb980ffBiS|r Nebbinator
+## Category: |cffb980ffBiS>|rAddons
 ## Notes: Guild recruitment in one window: build the ad, post it, and work everyone who whispers back.
 ## Author: Arn
 ## Version: 3.3.2

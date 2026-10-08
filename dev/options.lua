@@ -107,6 +107,13 @@ for _, r in ipairs(f.rows) do
     end
 end
 
+H.section("every label fits the window (H.fitsIn, calibrated widths)")
+-- the trimmed over-long label included: the kit trims by GetStringWidth, and
+-- this says whether what it trimmed to still fits on a real screen
+f:Show()   -- a hidden window measures nothing, on purpose
+H.fitsIn(f, "the options kit window")
+f:Hide()
+
 H.section("the header holds one button and nothing else")
 local heads = 0
 for _, fr in ipairs(H.frames) do if fr:GetParent() == f.head then heads = heads + 1 end end
@@ -153,6 +160,9 @@ H.ok(step.ctl.val:GetStringWidth() <= O.STEP_V, "the value fits between < and >"
 local btn = rowFor("reset window position")
 btn.ctl:Click()
 H.eq(db.resets, 1, "a button fires its action")
+f:Show()
+H.fitsIn(f, "the options kit window, every control moved")
+f:Hide()
 
 -- section box
 local sec = f.rows[7]

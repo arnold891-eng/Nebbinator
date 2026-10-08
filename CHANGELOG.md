@@ -1,5 +1,12 @@
 # Nebbinator
 
+## Unreleased
+
+- Queue name column 110 -> 150 px: a Forever name with its surname ("Kumlanceroo Wildhammer") no longer gets cut.
+- Lighter: the send-button clocks only run while the window is open (they ran 4 times a second
+  from login to logout), and the guild roster is read when an auto-reply needs it, not on every
+  roster ping. Shared libs: LibBiSComm minor 9, BiS> prompt minor 5.
+
 ## 3.3.2 - 16 Sep 2026
 
 - LibBiSComm minor 6: summon API moved to C_SummonInfo on 2.5.6 — the phantom-summon filter works again.
