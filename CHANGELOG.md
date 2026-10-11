@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Shared messaging library updated (LibBiSComm minor 10): after a boss, when the game lifts its chat lockdown, BiS addons say hello again so group lists stay current; it respects a realm that blocks addon messages, picks the raid channel only when the game confirms you are in a raid, and ignores anyone flooding it.
+
 - Queue name column 110 -> 150 px: a Forever name with its surname ("Kumlanceroo Wildhammer") no longer gets cut.
 - Lighter: the send-button clocks only run while the window is open (they ran 4 times a second
   from login to logout), and the guild roster is read when an auto-reply needs it, not on every
