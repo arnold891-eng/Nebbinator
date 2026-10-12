@@ -72,7 +72,28 @@ end
 -- Incoming whispers
 --------------------------------------------------------------------
 
+--- WHAT THE GAME HID, counted per event and never read (12 Oct 2026). A whisper that arrives while
+--- chat is locked down is still in the player's chat frame - only the desk cannot see it - so the
+--- first one says so, once, until a readable whisper comes in again.
+R.hidden = {}
+function R:Hid(event, ...)
+    for i = 1, select("#", ...) do
+        if U.Hidden((select(i, ...))) then
+            self.hidden[event] = (self.hidden[event] or 0) + 1
+            if event == "CHAT_MSG_WHISPER" and not self.toldHidden then
+                self.toldHidden = true
+                U.Print("a whisper came in while the game hides chat from addons - it is in your"
+                    .. " chat, not on the desk.")
+            end
+            return true
+        end
+    end
+    return false
+end
+
 function R:OnWhisper(text, sender, _, _, _, _, _, _, _, _, _, guid)
+    if self:Hid("CHAT_MSG_WHISPER", text, sender, guid) then return end
+    self.toldHidden = false
     sender = U.StripRealm(sender or "")
     if sender == "" then return end
 
@@ -131,6 +152,7 @@ local LEAD_PATTERNS = {
 
 function R:OnChannelMessage(text, sender, _, _, _, _, _, _, channelName)
     if not NS.db.leadFinder then return end
+    if self:Hid("CHAT_MSG_CHANNEL", text, sender, channelName) then return end
     sender = U.StripRealm(sender or "")
     if sender == "" or sender == UnitName("player") then return end
     if NS.db.responders[sender] then return end
@@ -324,6 +346,7 @@ end
 
 function R:OnSystemMessage(text)
     if not self.whoBusy then return end
+    if self:Hid("CHAT_MSG_SYSTEM", text) then return end
     if self:ParseWhoLine(text) then
         C_Timer.After(0.1, function()
             if self.whoBusy then self:FinishLookup() end
@@ -338,6 +361,7 @@ function R:InstallChatFilter()
     self.chatFilterInstalled = true
     ChatFrame_AddMessageEventFilter("CHAT_MSG_SYSTEM", function(_, _, text)
         if not R.whoBusy then return false end
+        if U.Hidden(text) then return false end      -- hidden: shown as the game shows it
         if text and (text:find("|Hplayer:", 1, true) or text:match("^%d+ ")) then
             return true
         end

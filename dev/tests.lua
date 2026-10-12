@@ -897,6 +897,62 @@ SlashCmdList["NEBBINATOR"]("preview")
 H.ok(#H.prints > chatBefore, "/nb preview still answers in the chat frame")
 SlashCmdList["NEBBINATOR"]("preview")
 
+H.section("hidden chat (Forever)")
+-- (12 Oct 2026) Questie threw 46 times in Arn's BugSack reading a CHAT_MSG_SYSTEM line the game
+-- had hidden. Nebbinator read whispers, channel lines and /who system lines the same way. A
+-- SECRET STRING SAYS "string" to type() on Forever and refuses everything else - so the mock
+-- does too (BiSTools' shape); a plain table would be caught by any type check by luck.
+do
+    local secretMeta = { __index = function(_, k) error("attempt to use a secret value (" .. tostring(k) .. ")", 2) end,
+                         __eq = function() error("attempt to compare a secret value", 2) end,
+                         __concat = function() error("attempt to concatenate a secret value", 2) end }
+    local function secret() return setmetatable({}, secretMeta) end
+    local realType, keepIs = type, _G.issecretvalue
+    _G.type = function(v) if getmetatable(v) == secretMeta then return "string" end return realType(v) end
+    _G.issecretvalue = function(v) return getmetatable(v) == secretMeta end
+    local function count(t) local n = 0 for _ in pairs(t) do n = n + 1 end return n end
+
+    NS.db.responders = {}
+    R.hidden, R.toldHidden = {}, false
+    local said = #H.prints
+    H.ok(pcall(R.OnWhisper, R, secret(), "Kumlust", nil, nil, nil, nil, nil, nil, nil, nil, nil, "Player-1-2"),
+        "a hidden whisper is not read")
+    H.ok(pcall(R.OnWhisper, R, "recruiting?", secret()), "nor one from a hidden sender")
+    H.eq(count(NS.db.responders), 0, "and nobody lands on the desk from what could not be read")
+    H.eq(R.hidden.CHAT_MSG_WHISPER, 2, "both are counted")
+    H.eq(#H.prints, said + 1, "the player is told once, not per whisper")
+    H.ok(tostring(H.prints[#H.prints]):find("it is in your chat", 1, true), "and told where it went")
+    R:OnWhisper("recruiting? resto shaman", "Kumlust")
+    H.eq(count(NS.db.responders), 1, "a readable whisper lands as before")
+    R:OnWhisper(secret(), "Other")
+    H.eq(#H.prints, said + 2, "and the next lockdown is told again")
+
+    local keepLead = NS.db.leadFinder
+    NS.db.leadFinder = true
+    H.ok(pcall(R.OnChannelMessage, R, secret(), "Seeker", nil, nil, nil, nil, nil, nil, "LookingForGroup"),
+        "a hidden channel line is not lowercased for the lead finder")
+    H.eq(R.hidden.CHAT_MSG_CHANNEL, 1, "and is counted")
+    -- LEAN: trade chat is hundreds of lines; the guard is three questions a line, no more
+    local Cost = dofile("../_bisdev/dev/cost.lua")
+    local n, by = Cost.Count(function()
+        for _ = 1, 500 do R:OnChannelMessage("WTS stuff", "Trader", nil, nil, nil, nil, nil, nil, "Trade") end
+    end)
+    H.ok(n <= 500 * 4, "500 channel lines cost at most 4 client calls each: " .. n, Cost.Top(by, 4))
+    H.say(("   cost: 500 channel lines = %d calls (%s)"):format(n, Cost.Top(by, 4)))
+    NS.db.leadFinder = keepLead
+
+    R.whoBusy = true
+    H.ok(pcall(R.OnSystemMessage, R, secret()), "a hidden system line during our /who is not parsed")
+    local filter = H.filters.CHAT_MSG_SYSTEM
+    local okF, shown = pcall(filter, nil, nil, secret())
+    H.ok(okF and shown == false, "and the chat filter leaves it for the game to show")
+    R.whoBusy = false
+
+    _G.type, _G.issecretvalue = realType, keepIs
+    NS.db.responders = {}
+    R.hidden, R.toldHidden = {}, false
+end
+
 H.section("every label fits its window")
 -- (6 Oct 2026) Arn: "a check for cut offs or overflows that happens often".
 -- H.fitsIn (harness) measures every shown label where it really starts and

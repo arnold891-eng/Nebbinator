@@ -264,6 +264,17 @@ function U.Trim(s)
     return (s:gsub("^%s+", ""):gsub("%s+$", ""))
 end
 
+--- IS THIS HIDDEN BY THE GAME? (12 Oct 2026). On Forever a chat line - a whisper, a channel line,
+--- a system line - can arrive SECRET while chat is locked down in an instance, and reading one is
+--- an error, not a nil. Arn's BugSack the same evening: Questie, 46 times, "attempt to perform
+--- string conversion on a secret string value" off CHAT_MSG_SYSTEM. BiSMemories hit it on 21 Sep
+--- and asks first; so does this now. A client without the call hides nothing.
+function U.Hidden(v)
+    if v == nil or not issecretvalue then return false end
+    local ok, yes = pcall(issecretvalue, v)
+    return (not ok) or yes == true
+end
+
 function U.StripRealm(name)
     if type(name) ~= "string" then return "" end
     return (name:gsub("%-.*$", ""))
