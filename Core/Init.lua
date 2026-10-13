@@ -389,21 +389,24 @@ local function HandleSlash(msg)
         NS.Util.Print("window put back in the middle.")
     else
         NS.Util.Print("commands:")
-        print("  " .. NS.T.text("accent", "/nb") .. " - open the window")
-        print("  " .. NS.T.text("accent", "/nb book") .. " - roll the rest of it out")
-        print("  " .. NS.T.text("accent", "/nb config") .. " - open the options window")
-        print("  " .. NS.T.text("accent", "/nb preview") .. " - toggle preview (test) mode")
-        print("  " .. NS.T.text("accent", "/nb reply") .. " - toggle auto-reply")
-        print("  " .. NS.T.text("accent", "/nb discord <link>") .. " - set the Discord invite")
-        print("  " .. NS.T.text("accent", "/nb channels <a, b>") .. " - extra channels to post to")
-        print("  " .. NS.T.text("accent", "/nb minimap") .. " - show or hide the minimap button")
-        print("  " .. NS.T.text("accent", "/nb reset") .. " - put the window back")
+        print("  " .. NS.T.text("accent", "/bisn") .. " - open the window")
+        print("  " .. NS.T.text("accent", "/bisn book") .. " - roll the rest of it out")
+        print("  " .. NS.T.text("accent", "/bisn config") .. " - open the options window")
+        print("  " .. NS.T.text("accent", "/bisn preview") .. " - toggle preview (test) mode")
+        print("  " .. NS.T.text("accent", "/bisn reply") .. " - toggle auto-reply")
+        print("  " .. NS.T.text("accent", "/bisn discord <link>") .. " - set the Discord invite")
+        print("  " .. NS.T.text("accent", "/bisn channels <a, b>") .. " - extra channels to post to")
+        print("  " .. NS.T.text("accent", "/bisn minimap") .. " - show or hide the minimap button")
+        print("  " .. NS.T.text("accent", "/bisn reset") .. " - put the window back")
     end
 end
 
-SLASH_NEBBINATOR1 = "/nebbinator"
+-- /bisn is the command (Arn, 12 Oct 2026): the family's /bis* commands -- /bish,
+-- /bist, /bisg. The old ones are kept as aliases so nobody's fingers break.
+SLASH_NEBBINATOR1 = "/bisn"
 SLASH_NEBBINATOR2 = "/nb"
 SLASH_NEBBINATOR3 = "/ns"
+SLASH_NEBBINATOR4 = "/nebbinator"
 SlashCmdList["NEBBINATOR"] = HandleSlash
 
 --------------------------------------------------------------------

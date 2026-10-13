@@ -283,6 +283,27 @@ _G.SOUNDKIT = { TELL_MESSAGE = 3081, MURLOC_AGGRO = 416, RAID_WARNING = 8959,
                 AUCTION_WINDOW_OPEN = 5274, MAP_PING = 3175, LEVELUP = 888 }
 _G.SlashCmdList = {}
 
+-- Type a line into chat the way the client routes it: walk every SlashCmdList
+-- key, read SLASH_<KEY>1, 2, 3 ... and STOP at the first missing number (the
+-- client does - a gap hides every alias after it). Match is case-insensitive.
+-- Returns the key it reached, or nil when no addon owns the command.
+function H.Slash(line)
+    local cmd, rest = line:match("^(/%S+)%s*(.-)$")
+    if not cmd then return nil end
+    cmd = cmd:upper()
+    for key, fn in pairs(_G.SlashCmdList) do
+        local i = 1
+        while _G["SLASH_" .. key .. i] do
+            if _G["SLASH_" .. key .. i]:upper() == cmd then
+                fn(rest)
+                return key, fn
+            end
+            i = i + 1
+        end
+    end
+    return nil
+end
+
 _G.GameTooltip = autoMethods({
     SetOwner = function() end, AddLine = function() end, Show = function() end,
     Hide = function() end, SetText = function() end,
@@ -414,6 +435,7 @@ _G.GetAddOnMetadata = function(_, key) return key == "Version" and "test" or nil
 local ALLOWED_GLOBALS = {
     Nebbinator = true, NebbinatorDB = true, NubbinatorDB = true,
     SLASH_NEBBINATOR1 = true, SLASH_NEBBINATOR2 = true, SLASH_NEBBINATOR3 = true,
+    SLASH_NEBBINATOR4 = true,
     NebbinatorFrame = true, NebbinatorCopyBox = true, NebbinatorMinimapButton = true,
     HARNESS = true, print = true,
     -- shared, embedded, and global by design

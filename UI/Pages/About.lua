@@ -29,14 +29,14 @@ function UI:BuildAbout(page)
 
     y = self:Caption(page, y - 10, "commands")
     local cmds = {
-        { "/nb",              "open this window" },
-        { "/nb r",            "open it on Responders" },
-        { "/nb config",       "open it on Settings" },
-        { "/nb preview",      "toggle preview mode" },
-        { "/nb reply",        "toggle auto-reply" },
-        { "/nb discord <url>", "set the Discord link" },
-        { "/nb minimap",      "show or hide the minimap button" },
-        { "/nb reset",        "put the window back in the middle" },
+        { "/bisn",              "open this window" },
+        { "/bisn r",            "open it on Responders" },
+        { "/bisn config",       "open it on Settings" },
+        { "/bisn preview",      "toggle preview mode" },
+        { "/bisn reply",        "toggle auto-reply" },
+        { "/bisn discord <url>", "set the Discord link" },
+        { "/bisn minimap",      "show or hide the minimap button" },
+        { "/bisn reset",        "put the window back in the middle" },
     }
     for _, pair in ipairs(cmds) do
         local c = K.fs(page, pair[1], 11, "accent")

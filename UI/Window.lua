@@ -6,7 +6,7 @@
 -- The rule that matters more than the look: every control here writes the SAME
 -- saved variable the slash commands write, through the same function where one
 -- exists. A checkbox that flips db.previewMode by hand instead of calling
--- NS.TogglePreview would drift from /nb preview the first time either changed.
+-- NS.TogglePreview would drift from /bisn preview the first time either changed.
 --
 -- Sibling modules are reached through NS.*, never a bare local: the page files
 -- load after this one, and a bare name would resolve to a nil global.
@@ -456,7 +456,7 @@ function UI:BuildHeader(f)
     self.con:Set("name", "Nebbinator", "accent")
 
     self.closeBtn = K.HeaderButton(head, -3, "x", "Close",
-        "/nb brings it back.", function() UI:Hide() end, "warn")
+        "/bisn brings it back.", function() UI:Hide() end, "warn")
 
     self.bookBtn = K.HeaderButton(head, -17, "=", "The rest of it",
         "Needs, raid times, templates and replies. Rolls back up when you are done.",
@@ -465,7 +465,7 @@ function UI:BuildHeader(f)
     -- Settings used to be a tab in the book. It is its own window now, the same
     -- one every BiS addon wears -- see UI/Options.lua.
     self.optBtn = K.HeaderButton(head, -31, "o", "Options",
-        "Sounds, cooldown, auto-reply, the minimap button. Also /nb config.",
+        "Sounds, cooldown, auto-reply, the minimap button. Also /bisn config.",
         function() UI:ToggleOptions() end)
 
     -- the header is the drag handle

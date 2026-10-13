@@ -2,7 +2,7 @@
 
 Guild recruitment for WoW TBC (Anniversary), in one window.
 
-`/nb` opens the **desk**: the prompt header, one line per person waiting, the
+`/bisn` opens the **desk**: the prompt header, one line per person waiting, the
 one you are serving opened up underneath, and the send buttons along the foot.
 Nothing else. It is 620 px wide and only as tall as the work in it - one row
 taller per whisper, one row shorter per accept or decline. Past ten waiting it
@@ -54,15 +54,18 @@ answer to somebody whispering you first.
 
 ## Commands
 
-    /nb                open the desk
-    /nb book           roll the tab rail out, or back up
-    /nb r              open the desk on the queue
-    /nb config         open the book on Settings
-    /nb preview        toggle preview mode (print, never send)
-    /nb reply          toggle auto-reply
-    /nb discord <url>  set the Discord link
-    /nb minimap        show or hide the minimap button
-    /nb reset          put the window back in the middle
+    /bisn                open the desk
+    /bisn book           roll the tab rail out, or back up
+    /bisn r              open the desk on the queue
+    /bisn config         open the book on Settings
+    /bisn preview        toggle preview mode (print, never send)
+    /bisn reply          toggle auto-reply
+    /bisn discord <url>  set the Discord link
+    /bisn minimap        show or hide the minimap button
+    /bisn reset          put the window back in the middle
+
+`/nb`, `/ns` and `/nebbinator` still work - the same commands under their old
+names, from before the BiS family settled on `/bis*`.
 
 Every one of those writes the same saved variable the matching checkbox writes,
 through the same function, so the window and the commands can never disagree.
