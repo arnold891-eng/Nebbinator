@@ -8,7 +8,7 @@ Read ../_bisdev/CLAUDE.md first.
   - Defaults, plus migration from 1.x (`NS.DB_VERSION`, currently 3; the value is stored in `db.dbVersion`). `NS:LoadDB` reads `NebbinatorDB or NubbinatorDB` (1.x used the old name). v1 goes through `MigrateV1`; v2 → v3 only fills in new keys and drops `db.windows`.
   - Toggles (`NS.TogglePreview`, `NS.ToggleAutoReply`, `NS.SetChannels`, `NS.SetDiscord`, `NS.ToggleMinimap`, `NS.ResetWindow`). A slash command and a UI control must both call these functions, never write the key themselves.
   - The shared BiS channel (`NS.Comm`, on the embedded LibBiSComm-1.0)
-  - Slash commands `/nebbinator`, `/nb`, `/ns`. Subcommands: `show`, `r`, `book`, `config`/`options`/`settings`, `preview`/`test`, `reply`, `channels <a, b>`, `discord <link>`, `minimap`, `reset`.
+  - Slash command `/bisn` (since 12 Oct 2026, the family's `/bis*`); `/nb`, `/ns`, `/nebbinator` kept as aliases (SLASH_NEBBINATOR2-4, no gaps: the client stops at the first missing number). Subcommands: `show`, `r`, `book`, `config`/`options`/`settings`, `preview`/`test`, `reply`, `channels <a, b>`, `discord <link>`, `minimap`, `reset`.
   - Events: `ADDON_LOADED`, then `PLAYER_LOGIN` → `NS:Initialize()`, then `PLAYER_LOGOUT` → `NS.Comm.Save()`
 - `Core/Util.lua` (359 lines): has no side effects. Contains the palette (`NS.T`, which uses `BiSTheme` when loaded and otherwise the same hex values inline), the TBC class/spec table `NS.CLASSES` (its order is used everywhere) and string helpers.
 - `Core/Message.lua` (290 lines): template tokens (`{guild}`, `{discord}`, ...), rendering, channels, and a chat-safe split/send queue (`NS.CHAT_LIMIT` = 255).

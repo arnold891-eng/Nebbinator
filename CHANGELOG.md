@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- **The command is `/bisn` now**, like the rest of the BiS family (`/bish`, `/bist`, `/bisg`). `/nb`, `/ns` and `/nebbinator` still work.
+
 - **No errors from hidden chat on Forever.** A whisper, channel line or `/who` result the game hides during an instance lockdown is no longer read (it threw, the way Questie does). It is counted and skipped; a hidden whisper is still in your chat, and Nebbinator says so once.
 
 - Shared messaging library updated (LibBiSComm minor 10): after a boss, when the game lifts its chat lockdown, BiS addons say hello again so group lists stay current; it respects a realm that blocks addon messages, picks the raid channel only when the game confirms you are in a raid, and ignores anyone flooding it.

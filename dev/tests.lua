@@ -91,7 +91,7 @@ local EXPECTED = {
 -- previewMode / sendCooldown / playSound / soundOnlyNew / sound / minimap /
 -- leadFinder left with the Settings tab: they live in the options window now
 -- and are exercised in "the options window" below. logsUrl is the box on the
--- desk; customChannels is /nb channels.
+-- desk; customChannels is /bisn channels.
 local ids = {}
 for _, id in ipairs(UI:IDs()) do ids[id] = true end
 for _, id in ipairs(EXPECTED) do H.ok(ids[id], "control exists: " .. id) end
@@ -128,10 +128,10 @@ H.eq(NS.db.autoReply.enabled, true, "checkbox turned auto-reply on")
 UI:Set("autoReply", true)
 H.eq(NS.db.autoReply.enabled, true, "...and again is a no-op, not a flip")
 SlashCmdList["NEBBINATOR"]("reply")
-H.eq(NS.db.autoReply.enabled, false, "/nb reply turns the same key off")
+H.eq(NS.db.autoReply.enabled, false, "/bisn reply turns the same key off")
 
 SlashCmdList["NEBBINATOR"]("discord discord.gg/fromslash")
-H.eq(UI:Get("discord"), "discord.gg/fromslash", "/nb discord reaches the field")
+H.eq(UI:Get("discord"), "discord.gg/fromslash", "/bisn discord reaches the field")
 
 H.section("checkbox paint")
 UI:ShowTab("Replies")
@@ -472,7 +472,34 @@ H.ok(await("sent to yell", 3), "the prompt says it went", plain())
 -- a slash command still answers in chat: that is what chat is for
 local chat2 = #H.prints
 SlashCmdList["NEBBINATOR"]("help")
-H.ok(#H.prints > chat2, "/nb help still answers in the chat frame")
+H.ok(#H.prints > chat2, "/bisn help still answers in the chat frame")
+
+H.section("the command is /bisn, the old ones still work")
+-- Arn, 12 Oct 2026: the family's /bis* commands. Typed through H.Slash, which
+-- routes the way the client does (SLASH_KEY1..n, stops at a gap), so an alias
+-- that is set but unreachable fails here.
+H.eq(SLASH_NEBBINATOR1, "/bisn", "SLASH_NEBBINATOR1 is /bisn")
+do
+local function helpAfter(line)
+    local before = #H.prints
+    local key, fn = H.Slash(line)
+    local out = {}
+    for i = before + 1, #H.prints do
+        out[#out + 1] = (tostring(H.prints[i]):gsub("|c%x%x%x%x%x%x%x%x", ""):gsub("|r", ""))
+    end
+    return key, fn, table.concat(out, "\n")
+end
+local k1, f1, help = helpAfter("/bisn help")
+H.eq(k1, "NEBBINATOR", "/bisn reaches Nebbinator")
+H.ok(help:find("/bisn config", 1, true), "the help text says /bisn", help)
+H.ok(not help:find("/nb", 1, true), "the help text no longer says /nb", help)
+for _, alias in ipairs({ "/nb", "/ns", "/nebbinator", "/BISN", "/NB" }) do
+    local k, f = helpAfter(alias .. " help")
+    H.eq(k, "NEBBINATOR", alias .. " still reaches Nebbinator")
+    H.ok(f == f1, alias .. " reaches the same handler as /bisn")
+end
+H.eq(H.Slash("/bisnope"), nil, "a longer word is not /bisn")
+end
 
 H.section("every queue row fits the desk")
 NS.db.responders = {}
@@ -796,7 +823,7 @@ H.ok(prev ~= nil, "there is a preview row")
 prev.ctl:Click()
 H.eq(NS.db.previewMode, true, "the box turned preview on")
 SlashCmdList["NEBBINATOR"]("preview")
-H.eq(NS.db.previewMode, false, "/nb preview turns the same key off")
+H.eq(NS.db.previewMode, false, "/bisn preview turns the same key off")
 opt:Paint()
 H.eq(prev.ctl.on, false, "and the box reads the slash command's change")
 
@@ -812,7 +839,7 @@ H.eq(NS.db.minimap.hide, true, "clicking it hides the button")
 -- screen with the box saying otherwise
 H.eq(NS.Minimap.button:IsShown(), false, "and the button really went away")
 SlashCmdList["NEBBINATOR"]("minimap")
-H.eq(NS.db.minimap.hide, false, "/nb minimap shows it again")
+H.eq(NS.db.minimap.hide, false, "/bisn minimap shows it again")
 H.eq(NS.Minimap.button:IsShown(), true, "and it really came back")
 
 NS.db.autoReply.enabled = false
@@ -864,7 +891,7 @@ H.eq(NS.db.window.point, nil, "reset put the window back")
 
 H.ok(not opt:IsShown(), "still hidden")
 SlashCmdList["NEBBINATOR"]("config")
-H.ok(opt:IsShown(), "/nb config opens it")
+H.ok(opt:IsShown(), "/bisn config opens it")
 H.ok(UI.optBtn.marked, "and the header box lights while it is out")
 UI.optBtn:Click()
 H.ok(not opt:IsShown(), "the header box closes it again")
@@ -879,7 +906,7 @@ for _, r in ipairs(opt.rows) do
     end
 end
 SlashCmdList["NEBBINATOR"]("channels world, lookingforgroup")
-H.eq(NS.db.customChannels, "world, lookingforgroup", "/nb channels took the extra channels")
+H.eq(NS.db.customChannels, "world, lookingforgroup", "/bisn channels took the extra channels")
 H.ok(UI.logsBox ~= nil, "and the logs address is the box on the desk")
 NS.db.logsUrl = "https://x/{name}"
 UI:RefreshDesk()
@@ -894,7 +921,7 @@ snd.ctl.plus:Click() snd.ctl.minus:Click()
 H.eq(#H.prints, chatBefore, "not one line in chat from a round of clicks")
 -- but the slash command still answers in chat, because that is what a slash is
 SlashCmdList["NEBBINATOR"]("preview")
-H.ok(#H.prints > chatBefore, "/nb preview still answers in the chat frame")
+H.ok(#H.prints > chatBefore, "/bisn preview still answers in the chat frame")
 SlashCmdList["NEBBINATOR"]("preview")
 
 H.section("hidden chat (Forever)")

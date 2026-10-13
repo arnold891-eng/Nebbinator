@@ -10,7 +10,7 @@
 -- out. What did not fit the four control kinds went where it belongs instead:
 --
 --   logs address     -> the box on the desk, where you actually use it
---   extra channels   -> /nb channels <a, b>   (a free-text field is not a control)
+--   extra channels   -> /bisn channels <a, b> (a free-text field is not a control)
 --   alert sound      -> a stepper that walks NS.SOUNDS and plays what it lands on
 --
 -- EVERY `set` HERE CALLS THE FUNCTION THE SLASH COMMAND ALREADY OWNS. None of
