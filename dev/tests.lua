@@ -792,8 +792,8 @@ end
 for _, name in ipairs(SECTIONS) do H.ok(haveSections[name], "section: " .. name) end
 for _, name in ipairs(OPTIONS) do H.ok(haveOptions[name], "option: " .. name) end
 H.eq(#opt.rows, #SECTIONS + #OPTIONS, "one row per section header and per option")
-H.eq(opt:GetHeight(), O.HEADER + #opt.rows * O.ROW + O.PAD, "height is header + rows + pad")
-H.eq(opt:GetWidth(), O.W, "and it is the house width")
+H.ok(opt:GetHeight() >= O.HEADER + math.ceil(#opt.rows / (opt.columns or 1)) * O.ROW, "tall enough for every row")
+H.ok(math.abs(opt:GetWidth() / opt:GetHeight() - O.RATIO) < 0.01, "and the BiSTheme standard shape, 1.43:1")
 H.ok(not opt:IsShown(), "built hidden; the toggle decides")
 
 -- budgets

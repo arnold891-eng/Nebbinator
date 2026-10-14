@@ -14,7 +14,7 @@ local O = T.OPTIONS
 
 H.section("the kit loads clean")
 H.eq(#H.leaked, 0, "no accidental globals", table.concat(H.leaked, ", "))
-H.eq(T.OPTIONS_MINOR, 2, "minor 2 (Escape closes)")
+H.eq(T.OPTIONS_MINOR, 3, "minor 3 (windows dodge each other)")
 H.ok(type(T.Options) == "function", "T.Options is the entry point")
 
 -- a db and an option list that exercises all four kinds
@@ -64,9 +64,9 @@ f:Section("farm", { get = function() return sectionOn end,
 f:Fit()
 
 H.eq(#f.rows, 7, "one row per section header and per option")
-H.eq(f:GetHeight(), O.HEADER + #f.rows * O.ROW + O.PAD,
-     "height is header + rows + pad", f:GetHeight())
-H.eq(f:GetWidth(), O.W, "and it stays narrow")
+-- THE BiSTheme STANDARD (Arn, 14 Oct): every window 1.43:1, grown to hold its rows
+H.ok(f:GetHeight() >= O.HEADER + math.ceil(#f.rows / (f.columns or 1)) * O.ROW, "tall enough for every row", f:GetHeight())
+H.ok(math.abs(f:GetWidth() / f:GetHeight() - O.RATIO) < 0.01, "and 1.43:1", f:GetWidth())
 
 H.section("budgets")
 -- the prompt gets the header minus the x's strip
