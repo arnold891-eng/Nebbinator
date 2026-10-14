@@ -14,7 +14,7 @@ local O = T.OPTIONS
 
 H.section("the kit loads clean")
 H.eq(#H.leaked, 0, "no accidental globals", table.concat(H.leaked, ", "))
-H.eq(T.OPTIONS_MINOR, 2, "minor 2 (Escape closes)")
+H.eq(T.OPTIONS_MINOR, 3, "minor 3 (windows dodge each other)")
 H.ok(type(T.Options) == "function", "T.Options is the entry point")
 
 -- a db and an option list that exercises all four kinds
