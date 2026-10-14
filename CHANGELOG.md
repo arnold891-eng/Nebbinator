@@ -1,6 +1,8 @@
 # Nebbinator
 
-## Unreleased
+## 3.4.0
+
+- **Options window**: the BiS shape (1.43:1) with settings in even columns, a help strip at the bottom, and it no longer opens on top of another BiS window.
 
 - **The command is `/bisn` now**, like the rest of the BiS family (`/bish`, `/bist`, `/bisg`). `/nb`, `/ns` and `/nebbinator` still work.
 
