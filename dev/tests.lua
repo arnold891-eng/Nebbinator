@@ -537,7 +537,7 @@ UI:ShowTab("Responders")
 H.section("LibBiSComm is embedded, booted, and never gated by a feature")
 local lib = _G.LibBiSComm
 H.ok(lib ~= nil, "the lib loaded from Libs/")
-H.eq(lib and lib.MINOR, 11, "minor 11, the current one (no ConfirmSummon hook on Forever)")
+H.eq(lib and lib.MINOR, 12, "minor 12, the current one (SPOT: guildmates on the map)")
 H.ok(lib and lib._booted, "booted from Core/Init, not lazily")
 -- the stub answers GetAddOnMetadata with "test": if this ever reads a literal
 -- like "2.0.1" the version has been hardcoded again and drifted from the TOC
