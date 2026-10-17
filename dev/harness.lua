@@ -321,6 +321,7 @@ H.say = realprint
 _G.wipe = function(t) for k in pairs(t) do t[k] = nil end return t end
 _G.tinsert = table.insert
 _G.time = os.time
+_G.GetServerTime = os.time      -- the client has it on every build; the API answers in it
 H.clock = 1000
 _G.GetTime = function() return H.clock end
 _G.GetCursorPosition = function() return 300, 400 end
@@ -438,6 +439,7 @@ local ALLOWED_GLOBALS = {
     SLASH_NEBBINATOR4 = true,
     NebbinatorFrame = true, NebbinatorCopyBox = true, NebbinatorMinimapButton = true,
     HARNESS = true, print = true,
+    NebbinatorAPI = true,            -- API.lua: the one door other addons use (playbook 5a)
     -- shared, embedded, and global by design
     BiSTheme = true, LibBiSComm = true, SLASH_BISCOMM1 = true,
 }

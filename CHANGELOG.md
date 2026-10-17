@@ -1,5 +1,10 @@
 # Nebbinator
 
+## 3.6.0
+
+- **NebbinatorAPI** - other BiS addons can read your recruits, the current ad and the desk's status, and open the window. It's read-only: nothing else can post your ad or whisper anyone.
+- The addon list shows **BiS>Nebbinator**, like its category.
+
 ## 3.5.0
 
 - **Your guild can see you on BiS Tools' map.** Every BiS addon now shares your spot with guildmates while you move - every 15 seconds in a small guild, slower as it grows, never from inside an instance. On by default; `/biscomm share off` (or `on`) switches it for every BiS addon at once.
