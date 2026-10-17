@@ -1,5 +1,5 @@
 ## Interface: 20506, 16001
-## Title: |cffb980ffBiS|r Nebbinator
+## Title: |cffb980ffBiS>|rNebbinator
 ## Category: |cffb980ffBiS>|rAddons
 ## IconTexture: Interface\TargetingFrame\UI-RaidTargetingIcon_1
 ## Notes: Guild recruitment in one window: build the ad, post it, and work everyone who whispers back.
