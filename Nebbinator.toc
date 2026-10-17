@@ -4,7 +4,7 @@
 ## IconTexture: Interface\TargetingFrame\UI-RaidTargetingIcon_1
 ## Notes: Guild recruitment in one window: build the ad, post it, and work everyone who whispers back.
 ## Author: Arn
-## Version: 3.5.0
+## Version: 3.6.0
 ## OptionalDeps: BiSTheme
 ## SavedVariables: NebbinatorDB, NubbinatorDB
 ## DefaultState: enabled
