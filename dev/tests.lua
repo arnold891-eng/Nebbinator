@@ -24,6 +24,20 @@ local NS = H.Load(ROOT, FILES)
 
 H.section("load")
 H.eq(#H.leaked, 0, "no accidental globals", table.concat(H.leaked, ", "))
+
+-- THE API BEFORE LOGIN (playbook 5a): every call answers nil, "not ready" and none errors.
+do
+    local A = _G.NebbinatorAPI
+    H.ok(type(A) == "table" and A.major == 1 and A.version == 1, "NebbinatorAPI is major 1, version 1")
+    H.eq(A.Ready(), false, "(api) not ready before login")
+    for _, fname in ipairs({ "Recruits", "Recruit", "CountNew", "Ad", "Status", "Open" }) do
+        local ok, got, why = pcall(A[fname], fname == "Recruit" and "Dps4" or nil)
+        H.ok(ok, "(api) " .. fname .. " does not error before login", got)
+        H.eq(got, nil, "(api) " .. fname .. " answers nil before login")
+        H.eq(why, "not ready", "(api) ...and says why: " .. fname)
+    end
+end
+
 NS:Initialize()
 H.ok(NS.db ~= nil, "db exists")
 H.eq(NS.db.dbVersion, 3, "db upgraded to v3")
@@ -1131,6 +1145,134 @@ do
     end)
     H.ok(asked <= 510, "and asking reads it once, not once per ping: " .. asked)
     _G.GetNumGuildMembers, _G.GetGuildRosterInfo = realN, realInfo
+end
+
+H.section("api (NebbinatorAPI, playbook 5a)")
+-- Every function, ready (here) and not ready (the load section, before login). Answers are copies:
+-- edit one, ask again, unchanged. Nothing through the API posts or whispers.
+do
+    local A = _G.NebbinatorAPI
+    local R = NS.Responders
+    H.eq(A.Ready(), true, "(api) ready after login")
+
+    -- callbacks first, so the whisper below is announced
+    local heard = {}
+    H.eq(A.RegisterCallback("Test", "Nebbinator_NewRecruit", function(ev, name, source)
+        heard[#heard + 1] = ev .. ":" .. tostring(name) .. ":" .. tostring(source)
+    end), true, "(api) a callback registers")
+    H.ok(A.RegisterCallback("Test", "Nebbinator_Whisper", function(ev, name, text)
+        heard[#heard + 1] = ev .. ":" .. tostring(name) .. ":" .. tostring(text)
+    end), "(api) a second event registers")
+    H.ok(A.RegisterCallback("Broken", "Nebbinator_Whisper", function() error("caller's bug") end),
+        "(api) a broken callback registers too")
+    local okBad, whyBad = A.RegisterCallback("Test", "Nebbinator_Nope", function() end)
+    H.eq(okBad, nil, "(api) an unknown event is refused")
+    H.eq(whyBad, "no such event", "(api) ...and says so")
+    H.eq(select(2, A.RegisterCallback("Test", "Nebbinator_Whisper", "notafunction")), "bad callback",
+        "(api) a callback that is not a function is refused")
+
+    R:ClearWithStatus(nil)
+    local wasAuto = NS.db.autoReply.enabled
+    NS.db.autoReply.enabled = false      -- an auto-reply would move them to "contacted"
+    local ok = pcall(R.OnWhisper, R, "recruiting? resto shaman", "Kumlance-Dreamscythe",
+        nil, nil, nil, nil, nil, nil, nil, nil, nil, "Player-1-0000ABC")
+    H.ok(ok, "(api) a caller's erroring callback never reaches the whisper handler")
+    H.eq(heard[1], "Nebbinator_NewRecruit:Kumlance:whisper", "(api) NewRecruit fired with name and source")
+    H.eq(heard[2], "Nebbinator_Whisper:Kumlance:recruiting? resto shaman", "(api) Whisper fired with the text")
+    R:OnWhisper("still there?", "Kumlance-Dreamscythe")
+    H.eq(#heard, 3, "(api) a second whisper is a Whisper, not a NewRecruit")
+    H.eq(heard[3], "Nebbinator_Whisper:Kumlance:still there?", "(api) ...with its text")
+
+    local wasLF = NS.db.leadFinder
+    NS.db.leadFinder = true
+    R:OnChannelMessage("LF guild, resto druid", "Leafy-Realm", nil, nil, nil, nil, nil, nil, "Trade")
+    NS.db.leadFinder = wasLF
+    H.eq(heard[4], "Nebbinator_NewRecruit:Leafy:channel", "(api) the lead finder announces a NewRecruit")
+
+    local sentBefore = #H.sent
+
+    -- Recruits / Recruit (the test runs inside one second; make Leafy plainly the newer)
+    NS.db.responders.Leafy.timestamp = NS.db.responders.Kumlance.timestamp + 60
+    local list = A.Recruits()
+    H.eq(#list, 2, "(api) Recruits lists both")
+    H.eq(list[1].name, "Leafy", "(api) newest first")
+    local k = A.Recruit("Kumlance-Dreamscythe")
+    H.ok(k ~= nil, "(api) Recruit finds a name with its realm on")
+    H.eq(k.name, "Kumlance", "(api) ...keyed without the realm")
+    H.eq(k.classFile, "MAGE", "(api) classFile from the whisper GUID")
+    H.eq(k.source, "whisper", "(api) source")
+    H.eq(k.status, "new", "(api) status")
+    H.eq(#k.messages, 2, "(api) both whispers kept")
+    H.eq(k.messages[2].text, "still there?", "(api) oldest first")
+    H.ok(type(k.lastAt) == "number", "(api) lastAt is a number")
+    k.name, k.status, k.messages[1].text = "Edited", "accepted", "edited"
+    k.messages[3] = { text = "added" }
+    local again = A.Recruit("Kumlance")
+    H.eq(again.name, "Kumlance", "(api) editing a Recruit answer does not touch the desk: name")
+    H.eq(again.status, "new", "(api) ...status")
+    H.eq(again.messages[1].text, "recruiting? resto shaman", "(api) ...messages")
+    H.eq(#again.messages, 2, "(api) ...message count")
+    H.eq(#NS.db.responders.Kumlance.messages, 2, "(api) ...and the saved table is untouched")
+    list[1].status = "declined"
+    table.remove(list, 2)
+    local list2 = A.Recruits()
+    H.eq(#list2, 2, "(api) editing a Recruits answer does not touch the desk: count")
+    H.eq(list2[1].status, "new", "(api) ...status")
+    H.eq(#A.Recruits("new"), 2, "(api) Recruits filters by status")
+    H.eq(#A.Recruits("trial"), 0, "(api) ...an empty status is an empty list")
+    H.eq(select(2, A.Recruits("bogus")), "no such status", "(api) an unknown status is refused")
+    H.eq(select(2, A.Recruit("Nobody")), "no such recruit", "(api) an unknown name says so")
+    H.eq(select(2, A.Recruit("")), "no name", "(api) a blank name says so")
+    H.eq(select(2, A.Recruit(42)), "no name", "(api) a number is not a name")
+
+    -- CountNew
+    H.eq(A.CountNew(), 2, "(api) CountNew")
+    R:SetStatus("Leafy", "contacted")
+    H.eq(A.CountNew(), 1, "(api) CountNew follows the desk")
+
+    -- Ad
+    local text, missing = A.Ad()
+    local want = NS.Message:Build()
+    H.eq(text, want, "(api) Ad is what the send bar would post")
+    H.ok(type(missing) == "table", "(api) Ad answers the empty tokens as a list")
+    missing[#missing + 1] = "{edited}"
+    local _, missing2 = A.Ad()
+    H.eq(#missing2, #missing - 1, "(api) editing Ad's list does not stick")
+
+    -- Status
+    local s = A.Status()
+    H.eq(s.version, NS.VERSION, "(api) Status version")
+    H.eq(s.preview, NS.db.previewMode and true or false, "(api) Status preview")
+    H.eq(s.recruits, 2, "(api) Status recruits")
+    H.eq(s.new, 1, "(api) Status new")
+    H.eq(s.template, NS.Message:ActiveTemplate().name, "(api) Status template")
+    H.ok(s.lastPostAt == nil or type(s.lastPostAt) == "number", "(api) lastPostAt is a time or nil")
+    s.preview, s.recruits = "edited", 99
+    local s2 = A.Status()
+    H.eq(s2.recruits, 2, "(api) editing Status does not stick")
+    H.eq(s2.preview, NS.db.previewMode and true or false, "(api) ...nor change the setting")
+
+    -- Open
+    UI:Hide()
+    H.eq(A.Open(), true, "(api) Open answers true")
+    H.eq(UI.frame:IsShown(), true, "(api) ...and the window is open")
+    H.eq(A.Open("Replies"), true, "(api) Open on a page")
+    H.eq(UI:ShownTab(), "Replies", "(api) ...shows that page")
+    H.eq(select(2, A.Open("Nope")), "no such page", "(api) an unknown page is refused")
+    UI:ShowTab("Recruit")
+    UI:Hide()
+
+    H.eq(#H.sent, sentBefore, "(api) nothing the API did posted or whispered")
+
+    -- unregister: silence, and unknown pairs are harmless
+    H.eq(A.UnregisterCallback("Test", "Nebbinator_Whisper"), true, "(api) unregister answers true")
+    A.UnregisterCallback("Test", "Nebbinator_NewRecruit")
+    A.UnregisterCallback("Broken", "Nebbinator_Whisper")
+    H.ok(pcall(A.UnregisterCallback, "Nobody", "Nebbinator_Nope"), "(api) unregistering nothing is harmless")
+    R:OnWhisper("hello again", "Kumlance")
+    H.eq(#heard, 4, "(api) after unregistering, nothing is heard")
+    R:ClearWithStatus(nil)
+    NS.db.autoReply.enabled = wasAuto
 end
 
 H.report()

@@ -139,6 +139,11 @@ function R:OnWhisper(text, sender, _, _, _, _, _, _, _, _, _, guid)
     self:MaybeAutoReply(entry, text)
     NS.UI:OnDataChanged()
     NS.Minimap:Update()
+    -- API.lua's callbacks; free when nobody listens
+    if NS.APIFire then
+        if isNew then NS.APIFire("Nebbinator_NewRecruit", sender, "whisper") end
+        NS.APIFire("Nebbinator_Whisper", sender, text)
+    end
 end
 
 --------------------------------------------------------------------
@@ -173,6 +178,7 @@ function R:OnChannelMessage(text, sender, _, _, _, _, _, _, channelName)
     NS.Say(sender .. " wants a guild", "gold")
     NS.UI:OnDataChanged()
     NS.Minimap:Update()
+    if NS.APIFire then NS.APIFire("Nebbinator_NewRecruit", sender, "channel") end
 end
 
 --------------------------------------------------------------------

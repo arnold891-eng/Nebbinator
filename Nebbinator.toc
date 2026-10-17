@@ -17,6 +17,7 @@ Core\Util.lua
 Core\Init.lua
 Core\Message.lua
 Core\Responders.lua
+API.lua
 
 UI\Kit.lua
 UI\Window.lua
